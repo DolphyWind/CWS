@@ -19,6 +19,7 @@
  */
 
 #include "tcc.h"
+#include "libtcc.h"
 #if ONE_SOURCE
 # include "libtcc.c"
 #endif
@@ -288,6 +289,7 @@ redo:
     tcc_set_options(s, CONFIG_TCC_SWITCHES);
 #endif
     opt = tcc_parse_args(s, &argc, &argv, 1);
+    tcc_define_symbol(s, "C_WITH_SEMICOLONS", "");
     if (opt < 0)
         return 1;
 

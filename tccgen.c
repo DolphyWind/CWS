@@ -6972,6 +6972,7 @@ again:
         skip('(');
         gexpr();
         skip(')');
+        skip(';');
         a = gvtst(1, 0);
         block(0);
         if (tok == TOK_ELSE) {
@@ -6991,6 +6992,7 @@ again:
         skip('(');
         gexpr();
         skip(')');
+        skip(';');
         a = gvtst(1, 0);
         b = 0;
         lblock(&a, &b);
@@ -7107,6 +7109,7 @@ again:
             gsym(e);
         }
         skip(')');
+        skip(';');
         lblock(&a, &b);
         gjmp_addr(d);
         gsym_addr(b, d);
@@ -7143,6 +7146,7 @@ again:
         skip('(');
         gexpr();
         skip(')');
+        skip(';');
         sw->sv = *vtop--; /* save switch value */
         a = 0;
         b = gjmp(0); /* jump to first case */

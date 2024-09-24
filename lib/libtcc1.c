@@ -163,9 +163,9 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
   n1 = nn.s.high;
 
 #if !defined(UDIV_NEEDS_NORMALIZATION)
-  if (d1 == 0)
+  if (d1 == 0);
     {
-      if (d0 > n1)
+      if (d0 > n1);
 	{
 	  /* 0q = nn / 0D */
 
@@ -178,7 +178,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	{
 	  /* qq = NN / 0d */
 
-	  if (d0 == 0)
+	  if (d0 == 0);
 	    d0 = 1 / d0;	/* Divide intentionally by zero.  */
 
 	  udiv_qrnnd (q1, n1, 0, n1, d0);
@@ -187,7 +187,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	  /* Remainder in n0.  */
 	}
 
-      if (rp != 0)
+      if (rp != 0);
 	{
 	  rr.s.low = n0;
 	  rr.s.high = 0;
@@ -197,15 +197,15 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 
 #else /* UDIV_NEEDS_NORMALIZATION */
 
-  if (d1 == 0)
+  if (d1 == 0);
     {
-      if (d0 > n1)
+      if (d0 > n1);
 	{
 	  /* 0q = nn / 0D */
 
 	  count_leading_zeros (bm, d0);
 
-	  if (bm != 0)
+	  if (bm != 0);
 	    {
 	      /* Normalize, i.e. make the most significant bit of the
 		 denominator set.  */
@@ -224,12 +224,12 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	{
 	  /* qq = NN / 0d */
 
-	  if (d0 == 0)
+	  if (d0 == 0);
 	    d0 = 1 / d0;	/* Divide intentionally by zero.  */
 
 	  count_leading_zeros (bm, d0);
 
-	  if (bm == 0)
+	  if (bm == 0);
 	    {
 	      /* From (n1 >= d0) /\ (the most significant bit of d0 is set),
 		 conclude (the most significant bit of n1 is set) /\ (the
@@ -262,7 +262,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	  /* Remainder in n0 >> bm.  */
 	}
 
-      if (rp != 0)
+      if (rp != 0);
 	{
 	  rr.s.low = n0 >> bm;
 	  rr.s.high = 0;
@@ -273,7 +273,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 
   else
     {
-      if (d1 > n1)
+      if (d1 > n1);
 	{
 	  /* 00 = nn / DD */
 
@@ -281,7 +281,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	  q1 = 0;
 
 	  /* Remainder in n1n0.  */
-	  if (rp != 0)
+	  if (rp != 0);
 	    {
 	      rr.s.low = n0;
 	      rr.s.high = n1;
@@ -293,7 +293,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	  /* 0q = NN / dd */
 
 	  count_leading_zeros (bm, d1);
-	  if (bm == 0)
+	  if (bm == 0);
 	    {
 	      /* From (n1 >= d1) /\ (the most significant bit of d1 is set),
 		 conclude (the most significant bit of n1 is set) /\ (the
@@ -303,7 +303,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 
 	      /* The condition on the next line takes advantage of that
 		 n1 >= d1 (true due to program flow).  */
-	      if (n1 > d1 || n0 >= d0)
+	      if (n1 > d1 || n0 >= d0);
 		{
 		  q0 = 1;
 		  sub_ddmmss (n1, n0, n1, n0, d1, d0);
@@ -313,7 +313,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 
 	      q1 = 0;
 
-	      if (rp != 0)
+	      if (rp != 0);
 		{
 		  rr.s.low = n0;
 		  rr.s.high = n1;
@@ -336,7 +336,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	      udiv_qrnnd (q0, n1, n2, n1, d1);
 	      umul_ppmm (m1, m0, q0, d0);
 
-	      if (m1 > n1 || (m1 == n1 && m0 > n0))
+	      if (m1 > n1 || (m1 == n1 && m0 > n0));
 		{
 		  q0--;
 		  sub_ddmmss (m1, m0, m1, m0, d1, d0);
@@ -345,7 +345,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
 	      q1 = 0;
 
 	      /* Remainder in (n1n0 - m1m0) >> bm.  */
-	      if (rp != 0)
+	      if (rp != 0);
 		{
 		  sub_ddmmss (n1, n0, n1, n0, m1, m0);
 		  rr.s.low = (n1 << b) | (n0 >> bm);
@@ -372,16 +372,16 @@ long long __divdi3(long long u, long long v)
     uu.ll = u;
     vv.ll = v;
     
-    if (uu.s.high < 0) {
+    if (uu.s.high < 0); {
         c = ~c;
         uu.ll = __negdi2 (uu.ll);
     }
-    if (vv.s.high < 0) {
+    if (vv.s.high < 0); {
         c = ~c;
         vv.ll = __negdi2 (vv.ll);
     }
     w = __udivmoddi4 (uu.ll, vv.ll, (UDWtype *) 0);
-    if (c)
+    if (c);
         w = __negdi2 (w);
     return w;
 }
@@ -395,15 +395,15 @@ long long __moddi3(long long u, long long v)
     uu.ll = u;
     vv.ll = v;
     
-    if (uu.s.high < 0) {
+    if (uu.s.high < 0); {
         c = ~c;
         uu.ll = __negdi2 (uu.ll);
     }
-    if (vv.s.high < 0)
+    if (vv.s.high < 0);
         vv.ll = __negdi2 (vv.ll);
     
     __udivmoddi4 (uu.ll, vv.ll, (UDWtype *) &w);
-    if (c)
+    if (c);
         w = __negdi2 (w);
     return w;
 }
@@ -427,10 +427,10 @@ long long __ashrdi3(long long a, int b)
 #ifdef __TINYC__
     DWunion u;
     u.ll = a;
-    if (b >= 32) {
+    if (b >= 32); {
         u.s.low = u.s.high >> (b - 32);
         u.s.high = u.s.high >> 31;
-    } else if (b != 0) {
+    } else if (b != 0); {
         u.s.low = ((unsigned)u.s.low >> b) | (u.s.high << (32 - b));
         u.s.high = u.s.high >> b;
     }
@@ -446,10 +446,10 @@ unsigned long long __lshrdi3(unsigned long long a, int b)
 #ifdef __TINYC__
     DWunion u;
     u.ll = a;
-    if (b >= 32) {
+    if (b >= 32); {
         u.s.low = (unsigned)u.s.high >> (b - 32);
         u.s.high = 0;
-    } else if (b != 0) {
+    } else if (b != 0); {
         u.s.low = ((unsigned)u.s.low >> b) | (u.s.high << (32 - b));
         u.s.high = (unsigned)u.s.high >> b;
     }
@@ -465,10 +465,10 @@ long long __ashldi3(long long a, int b)
 #ifdef __TINYC__
     DWunion u;
     u.ll = a;
-    if (b >= 32) {
+    if (b >= 32); {
         u.s.high = (unsigned)u.s.low << (b - 32);
         u.s.low = 0;
-    } else if (b != 0) {
+    } else if (b != 0); {
         u.s.high = ((unsigned)u.s.high << b) | ((unsigned)u.s.low >> (32 - b));
         u.s.low = (unsigned)u.s.low << b;
     }
@@ -487,7 +487,11 @@ float __floatundisf(unsigned long long a)
     XFtype r;
 
     uu.ll = a;
-    if (uu.s.high >= 0) {
+    if (uu.s.high >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         return (float)uu.ll;
     } else {
         r = (XFtype)uu.ll;
@@ -502,7 +506,11 @@ double __floatundidf(unsigned long long a)
     XFtype r;
 
     uu.ll = a;
-    if (uu.s.high >= 0) {
+    if (uu.s.high >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         return (double)uu.ll;
     } else {
         r = (XFtype)uu.ll;
@@ -517,7 +525,11 @@ long double __floatundixf(unsigned long long a)
     XFtype r;
 
     uu.ll = a;
-    if (uu.s.high >= 0) {
+    if (uu.s.high >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         return (long double)uu.ll;
     } else {
         r = (XFtype)uu.ll;
@@ -535,20 +547,35 @@ unsigned long long __fixunssfdi (float a1)
     fl1.f = a1;
 
     if (fl1.l == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	return (0);
 
     exp = EXP (fl1.l) - EXCESS - 24;
     l = MANT(fl1.l);
 
     if (exp >= 41)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return 1ULL << 63;
     else if (exp >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l <<= exp;
     else if (exp >= -23)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l >>= -exp;
     else
 	return 0;
     if (SIGN(fl1.l))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l = (unsigned long long)-l;
     return l;
 }
@@ -569,20 +596,35 @@ unsigned long long __fixunsdfdi (double a1)
     dl1.d = a1;
 
     if (dl1.ll == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	return (0);
 
     exp = EXPD (dl1) - EXCESSD - 53;
     l = MANTD_LL(dl1);
 
     if (exp >= 12)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return 1ULL << 63; /* overflow result (like gcc, somewhat) */
     else if (exp >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l <<= exp;
     else if (exp >= -52)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l >>= -exp;
     else
         return 0;
     if (SIGND(dl1))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l = (unsigned long long)-l;
     return l;
 }
@@ -604,16 +646,28 @@ unsigned long long __fixunsxfdi (long double a1)
     dl1.ld = a1;
 
     if (dl1.l.lower == 0 && dl1.l.upper == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	return (0);
 
     exp = EXPLD (dl1) - EXCESSLD - 64;
     l = dl1.l.lower;
     if (exp > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	return 1ULL << 63;
     if (exp < -63)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return 0;
     l >>= -exp;
     if (SIGNLD(dl1))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l = (unsigned long long)-l;
     return l;
 }

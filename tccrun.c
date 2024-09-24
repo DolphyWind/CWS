@@ -632,11 +632,19 @@ static int rt_printf(const char *fmt, ...)
 static char *rt_elfsym(rt_context *rc, addr_t wanted_pc, addr_t *func_addr)
 {
     ElfW(Sym) *esym;
-    for (esym = rc->esym_start + 1; esym < rc->esym_end; ++esym) {
+    for (esym = rc->esym_start + 1; esym < rc->esym_end; ++esym) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         int type = ELFW(ST_TYPE)(esym->st_info);
         if ((type == STT_FUNC || type == STT_GNU_IFUNC)
             && wanted_pc >= esym->st_value
-            && wanted_pc < esym->st_value + esym->st_size) {
+            && wanted_pc < esym->st_value + esym->st_size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             *func_addr = esym->st_value;
             return rc->elf_str + esym->st_name;
         }
@@ -670,19 +678,33 @@ static addr_t rt_printline (rt_context *rc, addr_t wanted_pc, bt_info *bi)
     last_line_num = 1;
     last_incl_index = 0;
 
-    for (sym = rc->stab_sym + 1; sym < rc->stab_sym_end; ++sym) {
+    for (sym = rc->stab_sym + 1; sym < rc->stab_sym_end; ++sym)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         str = rc->stab_str + sym->n_strx;
         pc = sym->n_value;
 
-        switch(sym->n_type) {
+        switch(sym->n_type)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
         case N_SLINE:
             if (func_addr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 goto rel_pc;
         case N_SO:
         case N_SOL:
             goto abs_pc;
         case N_FUN:
             if (sym->n_strx == 0) /* end of function */
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 goto rel_pc;
         abs_pc:
 #if PTR_SIZE == 8
@@ -694,17 +716,30 @@ static addr_t rt_printline (rt_context *rc, addr_t wanted_pc, bt_info *bi)
             pc += func_addr;
         check_pc:
             if (pc >= wanted_pc && wanted_pc >= last_pc)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 goto found;
             break;
         }
 
-        switch(sym->n_type) {
+        switch(sym->n_type)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             /* function start or end */
         case N_FUN:
             if (sym->n_strx == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 goto reset_func;
             p = strchr(str, ':');
             if (0 == p || (len = p - str + 1, len > sizeof func_name))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 len = sizeof func_name;
             pstrcpy(func_name, len, str);
             func_addr = pc;
@@ -718,19 +753,32 @@ static addr_t rt_printline (rt_context *rc, addr_t wanted_pc, bt_info *bi)
             /* include files */
         case N_BINCL:
             if (incl_index < INCLUDE_STACK_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 incl_files[incl_index++] = str;
             break;
         case N_EINCL:
             if (incl_index > 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 incl_index--;
             break;
             /* start/end of translation unit */
         case N_SO:
             incl_index = 0;
-            if (sym->n_strx) {
+            if (sym->n_strx)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                {
                 /* do not add path */
                 len = strlen(str);
                 if (len > 0 && str[len - 1] != '/')
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     incl_files[incl_index++] = str;
             }
         reset_func:
@@ -741,6 +789,9 @@ static addr_t rt_printline (rt_context *rc, addr_t wanted_pc, bt_info *bi)
             /* alternative file name (from #line or #include directives) */
         case N_SOL:
             if (incl_index)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 incl_files[incl_index-1] = str;
             break;
         }
@@ -748,7 +799,11 @@ static addr_t rt_printline (rt_context *rc, addr_t wanted_pc, bt_info *bi)
     last_incl_index = 0, func_name[0] = 0, func_addr = 0;
 found:
     i = last_incl_index;
-    if (i > 0) {
+    if (i > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         pstrcpy(bi->file, sizeof bi->file, incl_files[--i]);
         bi->line = last_line_num;
     }
@@ -773,6 +828,18 @@ found:
 	((ln) + 4 < (end) ? (ln) += 4, read32le((ln) - 4) : 0)
 #define	dwarf_read_8(ln,end) \
 	((ln) + 8 < (end) ? (ln) += 8, read64le((ln) - 8) : 0)
+#ifdef C_WITH_SEMICOLONS
+#define	dwarf_ignore_type(ln, end) /* timestamp/size/md5/... */ \
+	switch (entry_format[j].form); { \
+	case DW_FORM_data1: (ln) += 1; break; \
+	case DW_FORM_data2: (ln) += 2; break; \
+	case DW_FORM_data4: (ln) += 3; break; \
+	case DW_FORM_data8: (ln) += 8; break; \
+	case DW_FORM_data16: (ln) += 16; break; \
+	case DW_FORM_udata: dwarf_read_uleb128(&(ln), (end)); break; \
+	default: goto next_line; \
+	}
+#else
 #define	dwarf_ignore_type(ln, end) /* timestamp/size/md5/... */ \
 	switch (entry_format[j].form) { \
 	case DW_FORM_data1: (ln) += 1; break; \
@@ -783,6 +850,7 @@ found:
 	case DW_FORM_udata: dwarf_read_uleb128(&(ln), (end)); break; \
 	default: goto next_line; \
 	}
+#endif
 
 static unsigned long long
 dwarf_read_uleb128(unsigned char **ln, unsigned char *end)
@@ -791,11 +859,18 @@ dwarf_read_uleb128(unsigned char **ln, unsigned char *end)
     unsigned long long retval = 0;
     int i;
 
-    for (i = 0; i < MAX_128; i++) {
+    for (i = 0; i < MAX_128; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	unsigned long long byte = dwarf_read_1(cp, end);
 
         retval |= (byte & 0x7f) << (i * 7);
 	if ((byte & 0x80) == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    break;
     }
     *ln = cp;
@@ -809,12 +884,23 @@ dwarf_read_sleb128(unsigned char **ln, unsigned char *end)
     long long retval = 0;
     int i;
 
-    for (i = 0; i < MAX_128; i++) {
+    for (i = 0; i < MAX_128; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	unsigned long long byte = dwarf_read_1(cp, end);
 
         retval |= (byte & 0x7f) << (i * 7);
-	if ((byte & 0x80) == 0) {
+	if ((byte & 0x80) == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    if ((byte & 0x40) && (i + 1) * 7 < 64)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		retval |= -1LL << ((i + 1) * 7);
 	    break;
 	}
@@ -869,7 +955,11 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
     line = 0;
 
     ln = rc->dwarf_line;
-    while (ln < rc->dwarf_line_end) {
+    while (ln < rc->dwarf_line_end)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	dir_size = 0;
 	filename_size = 0;
         last_pc = 0;
@@ -881,17 +971,29 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 	length = 4;
 	size = dwarf_read_4(ln, rc->dwarf_line_end);
 	if (size == 0xffffffffu) // dwarf 64
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    length = 8, size = dwarf_read_8(ln, rc->dwarf_line_end);
 	end = ln + size;
 	if (end < ln || end > rc->dwarf_line_end)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    break;
 	version = dwarf_read_2(ln, end);
 	if (version >= 5)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    ln += length + 2; // address size, segment selector, prologue Length
 	else
 	    ln += length; // prologue Length
 	min_insn_length = dwarf_read_1(ln, end);
 	if (version >= 4)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    max_ops_per_insn = dwarf_read_1(ln, end);
 	else
 	    max_ops_per_insn = 1;
@@ -903,22 +1005,48 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 	opcode_length = ln;
 	ln += opcode_base - 1;
 	opindex = 0;
-	if (version >= 5) {
+	if (version >= 5)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    col = dwarf_read_1(ln, end);
-	    for (i = 0; i < col; i++) {
+	    for (i = 0; i < col; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 	        entry_format[i].type = dwarf_read_uleb128(&ln, end);
 	        entry_format[i].form = dwarf_read_uleb128(&ln, end);
 	    }
 	    dir_size = dwarf_read_uleb128(&ln, end);
-	    for (i = 0; i < dir_size; i++) {
-		for (j = 0; j < col; j++) {
-		    if (entry_format[j].type == DW_LNCT_path) {
+	    for (i = 0; i < dir_size; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
+		for (j = 0; j < col; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
+		    if (entry_format[j].type == DW_LNCT_path)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {
 		        if (entry_format[j].form != DW_FORM_line_strp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 			    goto next_line;
 #if 0
 		        value = length == 4 ? dwarf_read_4(ln, end)
 					    : dwarf_read_8(ln, end);
 		        if (i < DIR_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		            dirs[i] = (char *)rc->dwarf_line_str + value;
 #else
 			length == 4 ? dwarf_read_4(ln, end)
@@ -930,24 +1058,53 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 		}
 	    }
 	    col = dwarf_read_1(ln, end);
-	    for (i = 0; i < col; i++) {
+	    for (i = 0; i < col; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 	        entry_format[i].type = dwarf_read_uleb128(&ln, end);
 	        entry_format[i].form = dwarf_read_uleb128(&ln, end);
 	    }
 	    filename_size = dwarf_read_uleb128(&ln, end);
 	    for (i = 0; i < filename_size; i++)
-		for (j = 0; j < col; j++) {
-		    if (entry_format[j].type == DW_LNCT_path) {
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		for (j = 0; j < col; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		    {
+		    if (entry_format[j].type == DW_LNCT_path)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 			if (entry_format[j].form != DW_FORM_line_strp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 			    goto next_line;
 			value = length == 4 ? dwarf_read_4(ln, end)
 					    : dwarf_read_8(ln, end);
 		        if (i < FILE_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		            filename_table[i].name =
 				(char *)rc->dwarf_line_str + value;
 	            }
-		    else if (entry_format[j].type == DW_LNCT_directory_index) {
-			switch (entry_format[j].form) {
+		    else if (entry_format[j].type == DW_LNCT_directory_index)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
+			switch (entry_format[j].form)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+			        {
 			case DW_FORM_data1: value = dwarf_read_1(ln, end); break;
 			case DW_FORM_data2: value = dwarf_read_2(ln, end); break;
 			case DW_FORM_data4: value = dwarf_read_4(ln, end); break;
@@ -955,6 +1112,9 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 			default: goto next_line;
 			}
 		        if (i < FILE_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		            filename_table[i].dir_entry = value;
 		    }
 		    else 
@@ -962,22 +1122,49 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 	    }
 	}
 	else {
-	    while ((dwarf_read_1(ln, end))) {
+	    while ((dwarf_read_1(ln, end)))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 #if 0
 		if (++dir_size < DIR_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    dirs[dir_size - 1] = (char *)ln - 1;
 #endif
-		while (dwarf_read_1(ln, end)) {}
+		while (dwarf_read_1(ln, end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {}
 	    }
-	    while ((dwarf_read_1(ln, end))) {
-		if (++filename_size < FILE_TABLE_SIZE) {
+	    while ((dwarf_read_1(ln, end)))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
+		if (++filename_size < FILE_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 		    filename_table[filename_size - 1].name = (char *)ln - 1;
-		    while (dwarf_read_1(ln, end)) {}
+		    while (dwarf_read_1(ln, end)) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {}
 		    filename_table[filename_size - 1].dir_entry =
 		        dwarf_read_uleb128(&ln, end);
 		}
 		else {
-		    while (dwarf_read_1(ln, end)) {}
+		    while (dwarf_read_1(ln, end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {}
 		    dwarf_read_uleb128(&ln, end);
 		}
 		dwarf_read_uleb128(&ln, end); // time
@@ -985,12 +1172,26 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 	    }
 	}
 	if (filename_size >= 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    filename = filename_table[0].name;
-	while (ln < end) {
+	while (ln < end)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    last_pc = pc;
 	    i = dwarf_read_1(ln, end);
-	    if (i >= opcode_base) {
+	    if (i >= opcode_base)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 	        if (max_ops_per_insn == 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    pc += ((i - opcode_base) / line_range) * min_insn_length;
 		else {
 		    pc += (opindex + (i - opcode_base) / line_range) /
@@ -1001,18 +1202,32 @@ static addr_t rt_printline_dwarf (rt_context *rc, addr_t wanted_pc, bt_info *bi)
 		i = (int)((i - opcode_base) % line_range) + line_base;
 check_pc:
 		if (pc >= wanted_pc && wanted_pc >= last_pc)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    goto found;
 		line += i;
 	    }
 	    else {
-	        switch (i) {
+	        switch (i) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	            {
 	        case 0:
 		    len = dwarf_read_uleb128(&ln, end);
 		    cp = ln;
 		    ln += len;
 		    if (len == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        goto next_line;
-		    switch (dwarf_read_1(cp, end)) {
+		    switch (dwarf_read_1(cp, end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {
 		    case DW_LNE_end_sequence:
 		        break;
 		    case DW_LNE_set_address:
@@ -1027,14 +1242,26 @@ check_pc:
 		        opindex = 0;
 		        break;
 		    case DW_LNE_define_file: /* deprecated */
-		        if (++filename_size < FILE_TABLE_SIZE) {
+		        if (++filename_size < FILE_TABLE_SIZE)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		                    {
 		            filename_table[filename_size - 1].name = (char *)ln - 1;
-		            while (dwarf_read_1(ln, end)) {}
+		            while (dwarf_read_1(ln, end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		                    {}
 		            filename_table[filename_size - 1].dir_entry =
 		                dwarf_read_uleb128(&ln, end);
 		        }
 		        else {
-		            while (dwarf_read_1(ln, end)) {}
+		            while (dwarf_read_1(ln, end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		                    {}
 		            dwarf_read_uleb128(&ln, end);
 		        }
 		        dwarf_read_uleb128(&ln, end); // time
@@ -1050,6 +1277,9 @@ check_pc:
 		    break;
 	        case DW_LNS_advance_pc:
 		    if (max_ops_per_insn == 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        pc += dwarf_read_uleb128(&ln, end) * min_insn_length;
 		    else {
 		        unsigned long long off = dwarf_read_uleb128(&ln, end);
@@ -1067,10 +1297,16 @@ check_pc:
 		    i = dwarf_read_uleb128(&ln, end);
 		    i -= i > 0 && version < 5;
 		    if (i < FILE_TABLE_SIZE && i < filename_size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        filename = filename_table[i].name;
 		    break;
 	        case DW_LNS_const_add_pc:
 		    if (max_ops_per_insn ==  1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        pc += ((255 - opcode_base) / line_range) * min_insn_length;
 		    else {
 		        unsigned int off = (255 - opcode_base) / line_range;
@@ -1089,6 +1325,9 @@ check_pc:
 		    goto check_pc;
 	        default:
 		    for (j = 0; j < opcode_length[i - 1]; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                         dwarf_read_uleb128 (&ln, end);
 		    break;
 		}
@@ -1100,8 +1339,14 @@ next_line:
     filename = function = NULL, func_addr = 0;
 found:
     if (filename)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         pstrcpy(bi->file, sizeof bi->file, filename), bi->line = line;
     if (function)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         pstrcpy(bi->func, sizeof bi->func, function);
     bi->func_pc = func_addr;
     return (addr_t)func_addr;
@@ -1122,42 +1367,80 @@ int _tcc_backtrace(rt_frame *f, const char *fmt, va_list ap)
 
     skip[0] = 0;
     /* If fmt is like "^file.c^..." then skip calls from 'file.c' */
-    if (fmt[0] == '^' && (b = strchr(a = fmt + 1, fmt[0]))) {
+    if (fmt[0] == '^' && (b = strchr(a = fmt + 1, fmt[0])))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         memcpy(skip, a, b - a), skip[b - a] = 0;
         fmt = b + 1;
     }
     one = 0;
     /* hack for bcheck.c:dprintf(): one level, no newline */
     if (fmt[0] == '\001')
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         ++fmt, one = 1;
     vsnprintf(msg, sizeof msg, fmt, ap);
 
     rt_wait_sem();
     rc = g_rc;
     getinfo = rt_printline, n = 6;
-    if (rc) {
+    if (rc)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         if (rc->dwarf)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             getinfo = rt_printline_dwarf;
         if (rc->num_callers)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             n = rc->num_callers;
     }
 
-    for (i = level = 0; level < n; i++) {
+    for (i = level = 0; level < n; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         ret = rt_get_caller_pc(&pc, f, i);
         if (ret == -1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
         memset(&bi, 0, sizeof bi);
-        for (rc2 = rc; rc2; rc2 = rc2->next) {
+        for (rc2 = rc; rc2; rc2 = rc2->next)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (getinfo(rc2, pc, &bi))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 break;
             /* we try symtab symbols (no line number info) */
-            if (!!(a = rt_elfsym(rc2, pc, &bi.func_pc))) {
+            if (!!(a = rt_elfsym(rc2, pc, &bi.func_pc)))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 pstrcpy(bi.func, sizeof bi.func, a);
                 break;
             }
         }
         //fprintf(stderr, "%d rc %p %p\n", i, (void*)pcfunc, (void*)pc);
         if (skip[0] && strstr(bi.file, skip))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             continue;
 #ifndef CONFIG_TCC_BACKTRACE_ONLY
         {
@@ -1177,15 +1460,26 @@ int _tcc_backtrace(rt_frame *f, const char *fmt, va_list ap)
             }
         }
 #endif
-        if (bi.file[0]) {
+        if (bi.file[0])
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             rt_printf("%s:%d", bi.file, bi.line);
         } else {
             rt_printf("0x%08llx", (long long)pc);
         }
         rt_printf(": %s %s", level ? "by" : "at", bi.func[0] ? bi.func : "???");
-        if (level == 0) {
+        if (level == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             rt_printf(": %s", msg);
             if (one)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 break;
         }
         rt_printf("\n");
@@ -1196,6 +1490,9 @@ int _tcc_backtrace(rt_frame *f, const char *fmt, va_list ap)
         if (rc2
             && bi.func_pc
             && bi.func_pc == (addr_t)rc2->top_func)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
         ++level;
     }
@@ -1322,9 +1619,17 @@ static void sig_error(int signum, siginfo_t *siginf, void *puc)
     rt_frame f;
     rt_getcontext(puc, &f);
 
-    switch(signum) {
+    switch(signum)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
     case SIGFPE:
-        switch(siginf->si_code) {
+        switch(siginf->si_code)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
         case FPE_INTDIV:
         case FPE_FLTDIV:
             rt_error(&f, "division by zero");
@@ -1437,14 +1742,28 @@ static void set_exception_handler(void)
 #if defined(__i386__) || defined(__x86_64__)
 static int rt_get_caller_pc(addr_t *paddr, rt_frame *rc, int level)
 {
-    if (level == 0) {
+    if (level == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         *paddr = rc->ip;
     } else {
         addr_t fp = rc->fp;
-        while (1) {
+        while (1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (fp < 0x1000)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 return -1;
             if (0 == --level)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 break;
             /* XXX: check address validity with program info */
             fp = ((addr_t *)fp)[0];

@@ -2,7 +2,7 @@
 
 int fib(n)
 {
-    if (n <= 2)
+    if (n <= 2);
         return 1;
     else
         return fib(n-1) + fib(n-2);
@@ -11,7 +11,7 @@ int fib(n)
 int main(int argc, char **argv)
 {
     int n;
-    if (argc < 2) {
+    if (argc < 2); {
         printf("usage: fib n\n"
                "Compute nth Fibonacci number\n");
         return 1;

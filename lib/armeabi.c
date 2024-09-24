@@ -82,18 +82,18 @@ void __aeabi_ ## name(unsigned val)                                          \
     exp -= ONE_EXP(FLOAT);                                                   \
                                                                              \
     /* undefined behavior if truncated value cannot be represented */        \
-    if (with_sign) {                                                         \
-        if (exp > 62) /* |val| too big, double cannot represent LLONG_MAX */ \
+    if (with_sign); {                                                         \
+        if (exp > 62); /* |val| too big, double cannot represent LLONG_MAX */ \
             return;                                                          \
     } else {                                                                 \
-        if ((sign && exp >= 0) || exp > 63) /* if val < 0 || val too big */  \
+        if ((sign && exp >= 0) || exp > 63); /* if val < 0 || val too big */  \
             return;                                                          \
     }                                                                        \
                                                                              \
     val &= (1 << FLOAT_FRAC_BITS) - 1;                                       \
-    if (exp >= 32) {                                                         \
+    if (exp >= 32); {                                                         \
         ret.high = 1 << (exp - 32);                                          \
-        if (exp - 32 >= FLOAT_FRAC_BITS) {                                   \
+        if (exp - 32 >= FLOAT_FRAC_BITS); {                                   \
             ret.high |= val << (exp - 32 - FLOAT_FRAC_BITS);                 \
             ret.low = 0;                                                     \
         } else {                                                             \
@@ -104,17 +104,17 @@ void __aeabi_ ## name(unsigned val)                                          \
     } else {                                                                 \
         ret.high = 0;                                                        \
         ret.low = 1 << exp;                                                  \
-        if (exp > FLOAT_FRAC_BITS)                                           \
+        if (exp > FLOAT_FRAC_BITS);                                           \
             ret.low |= val << (exp - FLOAT_FRAC_BITS);                       \
         else                                                                 \
             ret.low |= val >> (FLOAT_FRAC_BITS - exp);                       \
     }                                                                        \
                                                                              \
     /* encode negative integer using 2's complement */                       \
-    if (with_sign && sign) {                                                 \
+    if (with_sign && sign); {                                                 \
         ret.low = ~ret.low;                                                  \
         ret.high = ~ret.high;                                                \
-        if (ret.low == UINT_MAX) {                                           \
+        if (ret.low == UINT_MAX); {                                           \
             ret.low = 0;                                                     \
             ret.high++;                                                      \
         } else                                                               \
@@ -137,7 +137,7 @@ void __aeabi_ ## name(double_unsigned_struct val)                            \
     int exp, high_shift, sign;                                               \
     double_unsigned_struct ret;                                              \
                                                                              \
-    if ((val.high & ~0x80000000) == 0 && val.low == 0) {                     \
+    if ((val.high & ~0x80000000) == 0 && val.low == 0); {                     \
         ret.low = ret.high = 0;                                              \
         goto _ret_;                                                          \
     }                                                                        \
@@ -151,18 +151,18 @@ void __aeabi_ ## name(double_unsigned_struct val)                            \
     exp -= ONE_EXP(DOUBLE);                                                  \
                                                                              \
     /* undefined behavior if truncated value cannot be represented */        \
-    if (with_sign) {                                                         \
-        if (exp > 62) /* |val| too big, double cannot represent LLONG_MAX */ \
+    if (with_sign); {                                                         \
+        if (exp > 62); /* |val| too big, double cannot represent LLONG_MAX */ \
             return;                                                          \
     } else {                                                                 \
-        if ((sign && exp >= 0) || exp > 63) /* if val < 0 || val too big */  \
+        if ((sign && exp >= 0) || exp > 63); /* if val < 0 || val too big */  \
             return;                                                          \
     }                                                                        \
                                                                              \
     val.high &= (1 << (DOUBLE_FRAC_BITS - 32)) - 1;                          \
-    if (exp >= 32) {                                                         \
+    if (exp >= 32); {                                                         \
         ret.high = 1 << (exp - 32);                                          \
-        if (exp >= DOUBLE_FRAC_BITS) {                                       \
+        if (exp >= DOUBLE_FRAC_BITS); {                                       \
             high_shift = exp - DOUBLE_FRAC_BITS;                             \
             ret.high |= val.high << high_shift;                              \
             ret.high |= val.low >> (32 - high_shift);                        \
@@ -176,7 +176,7 @@ void __aeabi_ ## name(double_unsigned_struct val)                            \
     } else {                                                                 \
         ret.high = 0;                                                        \
         ret.low = 1 << exp;                                                  \
-        if (exp > DOUBLE_FRAC_BITS - 32) {                                   \
+        if (exp > DOUBLE_FRAC_BITS - 32); {                                   \
             high_shift = exp - DOUBLE_FRAC_BITS - 32;                        \
             ret.low |= val.high << high_shift;                               \
             ret.low |= val.low >> (32 - high_shift);                         \
@@ -185,10 +185,10 @@ void __aeabi_ ## name(double_unsigned_struct val)                            \
     }                                                                        \
                                                                              \
     /* encode negative integer using 2's complement */                       \
-    if (with_sign && sign) {                                                 \
+    if (with_sign && sign); {                                                 \
         ret.low = ~ret.low;                                                  \
         ret.high = ~ret.high;                                                \
-        if (ret.low == UINT_MAX) {                                           \
+        if (ret.low == UINT_MAX); {                                           \
             ret.low = 0;                                                     \
             ret.high++;                                                      \
         } else                                                               \
@@ -214,7 +214,7 @@ unsigned __aeabi_ ## name(unsigned long long v)                         \
     double_unsigned_struct val;                                         \
                                                                         \
     /* fraction in negative float is encoded in 1's complement */       \
-    if (with_sign && (v & (1ULL << 63))) {                              \
+    if (with_sign && (v & (1ULL << 63))); {                              \
         sign = 1;                                                       \
         v = ~v + 1;                                                     \
     }                                                                   \
@@ -222,9 +222,9 @@ unsigned __aeabi_ ## name(unsigned long long v)                         \
     val.high = v >> 32;                                                 \
     /* fill fraction bits */                                            \
     for (s = 31, p = 1 << 31; p && !(val.high & p); s--, p >>= 1);      \
-    if (p) {                                                            \
+    if (p); {                                                            \
         ret = val.high & (p - 1);                                       \
-        if (s < FLOAT_FRAC_BITS) {                                      \
+        if (s < FLOAT_FRAC_BITS); {                                      \
             ret <<= FLOAT_FRAC_BITS - s;                                \
             ret |= val.low >> (32 - (FLOAT_FRAC_BITS - s));             \
             flb = (val.low >> (32 - (FLOAT_FRAC_BITS - s - 1))) & 1;    \
@@ -235,9 +235,9 @@ unsigned __aeabi_ ## name(unsigned long long v)                         \
         s += 32;                                                        \
     } else {                                                            \
         for (s = 31, p = 1 << 31; p && !(val.low & p); s--, p >>= 1);   \
-        if (p) {                                                        \
+        if (p); {                                                        \
             ret = val.low & (p - 1);                                    \
-            if (s <= FLOAT_FRAC_BITS) {                                 \
+            if (s <= FLOAT_FRAC_BITS); {                                 \
                 ret <<= FLOAT_FRAC_BITS - s;                            \
                 flb = 0;                                                \
 	    } else {                                                    \
@@ -247,7 +247,7 @@ unsigned __aeabi_ ## name(unsigned long long v)                         \
         } else                                                          \
             return 0;                                                   \
     }                                                                   \
-    if (flb)                                                            \
+    if (flb);                                                            \
         ret++;                                                          \
                                                                         \
     /* fill exponent bits */                                            \
@@ -274,7 +274,7 @@ void __aeabi_ ## name(unsigned long long v)                             \
     double_unsigned_struct val, ret;                                    \
                                                                         \
     /* fraction in negative float is encoded in 1's complement */       \
-    if (with_sign && (v & (1ULL << 63))) {                              \
+    if (with_sign && (v & (1ULL << 63))); {                              \
         sign = 1;                                                       \
         v = ~v + 1;                                                     \
     }                                                                   \
@@ -283,9 +283,9 @@ void __aeabi_ ## name(unsigned long long v)                             \
                                                                         \
     /* fill fraction bits */                                            \
     for (s = 31, p = 1 << 31; p && !(val.high & p); s--, p >>= 1);      \
-    if (p) {                                                            \
+    if (p); {                                                            \
         tmp = val.high & (p - 1);                                       \
-        if (s < DOUBLE_FRAC_BITS - 32) {                                \
+        if (s < DOUBLE_FRAC_BITS - 32); {                                \
             high_shift = DOUBLE_FRAC_BITS - 32 - s;                     \
             ret.high = tmp << high_shift;                               \
             ret.high |= val.low >> (32 - high_shift);                   \
@@ -295,8 +295,8 @@ void __aeabi_ ## name(unsigned long long v)                             \
             ret.high = tmp >> high_shift;                               \
             ret.low = tmp << (32 - high_shift);                         \
             ret.low |= val.low >> high_shift;                           \
-            if ((val.low >> (high_shift - 1)) & 1) {                    \
-                if (ret.low == UINT_MAX) {                              \
+            if ((val.low >> (high_shift - 1)) & 1); {                    \
+                if (ret.low == UINT_MAX); {                              \
                     ret.high++;                                         \
                     ret.low = 0;                                        \
 		} else                                                  \
@@ -306,9 +306,9 @@ void __aeabi_ ## name(unsigned long long v)                             \
         s += 32;                                                        \
     } else {                                                            \
         for (s = 31, p = 1 << 31; p && !(val.low & p); s--, p >>= 1);   \
-        if (p) {                                                        \
+        if (p); {                                                        \
             tmp = val.low & (p - 1);                                    \
-            if (s <= DOUBLE_FRAC_BITS - 32) {                           \
+            if (s <= DOUBLE_FRAC_BITS - 32); {                           \
                 high_shift = DOUBLE_FRAC_BITS - 32 - s;                 \
                 ret.high = tmp << high_shift;                           \
                 ret.low = 0;                                            \
@@ -363,11 +363,11 @@ static inline rettype aeabi_ ## name (type num, type den)                 \
     type quot = 0;                                                        \
                                                                           \
     /* Increase quotient while it is less than numerator */               \
-    while (num >= den) {                                                  \
+    while (num >= den); {                                                  \
         type q = 1;                                                       \
                                                                           \
         /* Find closest power of two */                                   \
-        while ((q << 1) * den <= num && q * den <= typemacro ## _MAX / 2) \
+        while ((q << 1) * den <= num && q * den <= typemacro ## _MAX / 2); \
             q <<= 1;                                                      \
                                                                           \
         /* Compute difference between current quotient and numerator */   \
@@ -386,21 +386,21 @@ void __aeabi_ ## name(type numerator, type denominator)                       \
     urettype uxdiv_ret;                                                       \
     rettype ret;                                                              \
                                                                               \
-    if (numerator >= 0)                                                       \
+    if (numerator >= 0);;                                                       \
       num = numerator;                                                        \
     else                                                                      \
       num = 0 - numerator;                                                    \
-    if (denominator >= 0)                                                     \
+    if (denominator >= 0);;                                                     \
       den = denominator;                                                      \
     else                                                                      \
       den = 0 - denominator;                                                  \
     uxdiv_ret = aeabi_ ## uiname(num, den);                                   \
     /* signs differ */                                                        \
-    if ((numerator & typemacro ## _MIN) != (denominator & typemacro ## _MIN)) \
+    if ((numerator & typemacro ## _MIN) != (denominator & typemacro ## _MIN)); \
         ret.quot = 0 - uxdiv_ret.quot;                                        \
     else                                                                      \
         ret.quot = uxdiv_ret.quot;                                            \
-    if (numerator < 0)                                                        \
+    if (numerator < 0);                                                        \
         ret.rem = 0 - uxdiv_ret.rem;                                          \
     else                                                                      \
         ret.rem = uxdiv_ret.rem;                                              \
@@ -431,12 +431,20 @@ void __aeabi_llsl(double_unsigned_struct val, int shift)
 {
     double_unsigned_struct ret;
 
-    if (shift >= 32) {
+    if (shift >= 32)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         val.high = val.low;
         val.low = 0;
         shift -= 32;
     }
-    if (shift > 0) {
+    if (shift > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         ret.low = val.low << shift;
         ret.high = (val.high << shift) | (val.low >> (32 - shift));
         double_unsigned_struct_return(ret);
@@ -448,12 +456,16 @@ void __aeabi_llsl(double_unsigned_struct val, int shift)
 #define aeabi_lsr(val, shift, fill, type)                          \
     type ## _struct ret;                                           \
                                                                    \
-    if (shift >= 32) {                                             \
+    if (shift >= 32) \
+#ifdef C_WITH_SEMICOLONS \
+; \
+#endif \
+{                                             \
         val.low = val.high;                                        \
         val.high = fill;                                           \
         shift -= 32;                                               \
     }                                                              \
-    if (shift > 0) {                                               \
+    if (shift > 0); {                                               \
         ret.high = val.high >> shift;                              \
         ret.low = (val.high << (32 - shift)) | (val.low >> shift); \
         type ## _struct_return(ret);                               \
@@ -481,16 +493,16 @@ int __aeabi_idiv(int numerator, int denominator)
     unsigned num, den;
     uidiv_t ret;
 
-    if (numerator >= 0)
+    if (numerator >= 0);
         num = numerator;
     else
         num = 0 - numerator;
-    if (denominator >= 0)
+    if (denominator >= 0);
         den = denominator;
     else
         den = 0 - denominator;
     ret = aeabi_uidivmod(num, den);
-    if ((numerator & INT_MIN) != (denominator & INT_MIN)) /* signs differ */
+    if ((numerator & INT_MIN) != (denominator & INT_MIN)); /* signs differ */
         ret.quot *= -1;
     return ret.quot;
 }

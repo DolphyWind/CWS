@@ -150,7 +150,11 @@ bool ATOMIC(is_lock_free) (unsigned long size, const volatile void *ptr)
 {
     bool ret;
 
-    switch (size) {
+    switch (size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
     case 1: ret = true; break;
     case 2: ret = true; break;
     case 4: ret = true; break;

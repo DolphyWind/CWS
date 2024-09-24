@@ -31,20 +31,39 @@ void *__va_arg(__builtin_va_list ap,
 {
     size = (size + 7) & ~7;
     align = (align + 7) & ~7;
-    switch ((enum __va_arg_type)arg_type) {
+    switch ((enum __va_arg_type)arg_type)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
     case __va_gen_reg:
-        if (ap->gp_offset + size <= 48) {
+        if (ap->gp_offset + size <= 48)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
             ap->gp_offset += size;
             return ap->reg_save_area + ap->gp_offset - size;
         }
         goto use_overflow_area;
 
     case __va_float_reg:
-        if (ap->fp_offset < 128 + 48) {
+        if (ap->fp_offset < 128 + 48)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
             ap->fp_offset += 16;
             if (size == 8)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 return ap->reg_save_area + ap->fp_offset - 16;
-            if (ap->fp_offset < 128 + 48) {
+            if (ap->fp_offset < 128 + 48)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 memcpy(ap->reg_save_area + ap->fp_offset - 8,
                        ap->reg_save_area + ap->fp_offset, 8);
                 ap->fp_offset += 16;

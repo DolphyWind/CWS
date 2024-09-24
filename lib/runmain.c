@@ -14,6 +14,9 @@ static void run_ctors(int argc, char **argv, char **env)
 {
     int i = 0;
     while (&_(_init_array_start)[i] != _(_init_array_end))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         (*_(_init_array_start)[i++])(argc, argv, env);
 }
 #endif
@@ -24,6 +27,9 @@ static void run_dtors(void)
 {
     int i = 0;
     while (&_(_fini_array_end)[i] != _(_fini_array_start))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         (*_(_fini_array_end)[--i])();
 }
 
@@ -35,13 +41,20 @@ void __run_on_exit(int ret)
 {
     int n = __rt_nr_exit;
     while (n)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	--n, ((void(*)(int,void*))rt_exitfunc[n])(ret, rt_exitarg[n]);
 }
 
 int on_exit(void *function, void *arg)
 {
     int n = __rt_nr_exit;
-    if (n < 32) {
+    if (n < 32)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	rt_exitfunc[n] = function;
 	rt_exitarg[n] = arg;
         __rt_nr_exit = n + 1;

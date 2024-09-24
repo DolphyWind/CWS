@@ -60,10 +60,16 @@ static FILE *open_tcov_file (char *cov_filename)
 #endif
     fd = open (cov_filename, O_RDWR | O_CREAT, 0666);
     if (fd < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	return NULL;
   
 #ifndef _WIN32
     while (fcntl (fd, F_SETLKW, &lock) && errno == EINTR)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         continue;
 #else
     {
@@ -82,6 +88,9 @@ static unsigned long long get_value(unsigned char *p, int size)
 
     p += size;
     while (size--)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
  	value = (value << 8) | *--p;
     return value;
 }
@@ -115,19 +124,38 @@ static tcov_file *sort_test_coverage (unsigned char *p)
     tcov_file *nfile;
 
     p += 4;
-    while (*p) {
+    while (*p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         char *filename = (char *)p;
 	size_t len = strlen (filename);
 
 	nfile = file;
-	while (nfile) {
+	while (nfile)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    if (strcmp (nfile->filename, filename) == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		break;
 	    nfile = nfile->next;
 	}
-	if (nfile == NULL) {
+	if (nfile == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    nfile = malloc (sizeof(tcov_file));
-	    if (nfile == NULL) {
+	    if (nfile == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 	        fprintf (stderr, "Malloc error test_coverage\n");
 	        return file;
     	    }
@@ -137,35 +165,64 @@ static tcov_file *sort_test_coverage (unsigned char *p)
 	    nfile->func = NULL;
 	    nfile->next = NULL;
 	    if (file == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	        file = nfile;
 	    else {
 		tcov_file *lfile = file;
 
 	        while (lfile->next)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    lfile = lfile->next;
 		lfile->next = nfile;
 	    }
 	}
 	p += len + 1;
-	while (*p) {
+	while (*p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    int i;
 	    char *function = (char *)p;
 	    tcov_function *func;
 
 	    p += strlen (function) + 1;
 	    p += -(p - start) & 7;
-	    for (i = 0; i < nfile->n_func; i++) {
+	    for (i = 0; i < nfile->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		func = &nfile->func[i];
 		if (strcmp (func->function, function) == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    break;
 	    }
-	    if (i == nfile->n_func) {
-	        if (nfile->n_func >= nfile->m_func) {
+	    if (i == nfile->n_func)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
+	        if (nfile->n_func >= nfile->m_func)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	            {
 		    nfile->m_func = nfile->m_func == 0 ? 4 : nfile->m_func * 2;
 		    nfile->func = realloc (nfile->func,
 					   nfile->m_func *
 					   sizeof (tcov_function));
-		    if (nfile->func == NULL) {
+		    if (nfile->func == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {
 		        fprintf (stderr, "Realloc error test_coverage\n");
 		        return file;
 		    }
@@ -178,15 +235,27 @@ static tcov_file *sort_test_coverage (unsigned char *p)
 	        func->line = NULL;
 	    }
 	    p += 8;
-	    while (*p) {
+	    while (*p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		tcov_line *line;
 		unsigned long long val;
 
-		if (func->n_line >= func->m_line) {
+		if (func->n_line >= func->m_line)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 		    func->m_line = func->m_line == 0 ? 4 : func->m_line * 2;
 		    func->line = realloc (func->line,
 					  func->m_line * sizeof (tcov_line));
-		    if (func->line == NULL) {
+		    if (func->line == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {
 		        fprintf (stderr, "Realloc error test_coverage\n");
 		        return file;
 		    }
@@ -203,9 +272,17 @@ static tcov_file *sort_test_coverage (unsigned char *p)
 	p++;
     }
     nfile = file;
-    while (nfile) {
+    while (nfile)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	qsort (nfile->func, nfile->n_func, sizeof (tcov_function), sort_func);
-	for (i = 0; i < nfile->n_func; i++) {
+	for (i = 0; i < nfile->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    tcov_function *func = &nfile->func[i];
 	    qsort (func->line, func->n_line, sizeof (tcov_line), sort_line);
         }
@@ -224,28 +301,53 @@ static void merge_test_coverage (tcov_file *file, FILE *fp,
     
     *pruns = 1;
     if (fp == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return;
     if (fgets(str, sizeof(str), fp) &&
         (p = strrchr (str, ':')) &&
-        (sscanf (p + 1, "%u", &runs) == 1)) 
+        (sscanf (p + 1, "%u", &runs) == 1))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         *pruns = runs + 1;
-    while (file) {
+    while (file)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	int i;
 	size_t len = strlen (file->filename);
 
 	while (fgets(str, sizeof(str), fp) &&
-	       (p = strstr(str, "0:File:")) == NULL) {}
+	       (p = strstr(str, "0:File:")) == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {}
         if ((p = strstr(str, "0:File:")) == NULL ||
 	    strncmp (p + strlen("0:File:"), file->filename, len) != 0 ||
 	    p[strlen("0:File:") + len] != ' ')
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    break;
-	for (i = 0; i < file->n_func; i++) {
+	for (i = 0; i < file->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    int j;
 	    tcov_function *func = &file->func[i];
 	    unsigned int next_zero = 0;
 	    unsigned int curline = 0;
 
-	    for (j = 0; j < func->n_line; j++) {
+	    for (j = 0; j < func->n_line; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		tcov_line *line = &func->line[j];
 	        unsigned int fline = line->fline;
 	        unsigned long long count;
@@ -254,11 +356,24 @@ static void merge_test_coverage (tcov_file *file, FILE *fp,
 
 		while (curline < fline &&
 		       fgets(str, sizeof(str), fp))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		    if ((p = strchr(str, ':')) &&
 			sscanf (p + 1, "%u", &tmp) == 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 			curline = tmp;
-		if (sscanf (str, "%llu%c\n", &count, &c) == 2) {
+		if (sscanf (str, "%llu%c\n", &count, &c) == 2)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 		    if (next_zero == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        line->count += count;
 		    next_zero = c == '*';
 		}
@@ -285,7 +400,11 @@ void __store_test_coverage (unsigned char * p)
     tcov_function *func;
 
     fp = open_tcov_file (cov_filename);
-    if (fp == NULL) {
+    if (fp == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	fprintf (stderr, "Cannot create coverage file: %s\n", cov_filename);
 	return;
     }
@@ -298,12 +417,24 @@ void __store_test_coverage (unsigned char * p)
     blocks = 0;
     blocks_run = 0;
     nfile = file;
-    while (nfile) {
+    while (nfile)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	files++;
-	for (i = 0; i < nfile->n_func; i++) {
+	for (i = 0; i < nfile->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    func = &nfile->func[i];
 	    funcs++;
-	    for (j = 0; j < func->n_line; j++) {
+	    for (j = 0; j < func->n_line; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		blocks++;
 		blocks_run += func->line[j].count != 0;
 	    }
@@ -311,45 +442,80 @@ void __store_test_coverage (unsigned char * p)
 	nfile = nfile->next;
     }
     if (blocks == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	blocks = 1;
     fprintf (fp, "        -:    0:All:%s Files:%u Functions:%u %.02f%%\n",
 	     cov_filename, files, funcs, 100.0 * (double) blocks_run / blocks);
     nfile = file;
-    while (nfile) {
+    while (nfile)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 	FILE *src = fopen (nfile->filename, "r");
 	unsigned int curline = 1;
 	char str[10000];
 
         if (src == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	     goto next;
 	funcs = 0;
 	blocks = 0;
 	blocks_run = 0;
-	for (i = 0; i < nfile->n_func; i++) {
+	for (i = 0; i < nfile->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    func = &nfile->func[i];
 	    funcs++;
-	    for (j = 0; j < func->n_line; j++) {
+	    for (j = 0; j < func->n_line; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		blocks++;
 		blocks_run += func->line[j].count != 0;
 	    }
 	}
 	if (blocks == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    blocks = 1;
         fprintf (fp, "        -:    0:File:%s Functions:%u %.02f%%\n",
 		 nfile->filename, funcs, 100.0 * (double) blocks_run / blocks);
-        for (i = 0; i < nfile->n_func; i++) {
+        for (i = 0; i < nfile->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
 	    func = &nfile->func[i];
 	
 	    while (curline < func->first_line &&
 		   fgets(str, sizeof(str), src))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		fprintf (fp, "        -:%5u:%s", curline++, str);
 	    blocks = 0;
 	    blocks_run = 0;
-	    for (j = 0; j < func->n_line; j++) {
+	    for (j = 0; j < func->n_line; j++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 		blocks++;
 		blocks_run += func->line[j].count != 0;
 	    }
 	    if (blocks == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		blocks = 1;
             fprintf (fp, "        -:    0:Function:%s %.02f%%\n",
 		     func->function, 100.0 * (double) blocks_run / blocks);
@@ -362,7 +528,11 @@ void __store_test_coverage (unsigned char * p)
 		fprintf (fp, "%u %u %llu\n", fline, lline, count);
 	    }
 #endif
-	    for (j = 0; j < func->n_line;) {
+	    for (j = 0; j < func->n_line;)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	        {
 	        unsigned int fline = func->line[j].fline;
 	        unsigned int lline = func->line[j].lline;
 	        unsigned long long count = func->line[j].count;
@@ -370,15 +540,29 @@ void __store_test_coverage (unsigned char * p)
 		unsigned int same_line = fline == lline;
 
 		j++;
-		while (j < func->n_line) {
+		while (j < func->n_line)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 	            unsigned int nfline = func->line[j].fline;
 	            unsigned int nlline = func->line[j].lline;
 	            unsigned long long ncount = func->line[j].count;
 
-		    if (fline == nfline) {
+		    if (fline == nfline)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		            {
 			if (ncount == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 			    has_zero = 1;
 			else if (ncount > count)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 			    count =  ncount;
 			same_line = nfline == nlline;
 			lline = nlline;
@@ -388,17 +572,30 @@ void __store_test_coverage (unsigned char * p)
 			break;
 		}
 		if (same_line)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		     lline++;
 
 	        while (curline < fline &&
-		       fgets(str, sizeof(str), src))
+		       fgets(str, sizeof(str), src));
 		     fprintf (fp, "        -:%5u:%s", curline++, str);
 		while (curline < lline &&
-		       fgets(str, sizeof(str), src)) {
+		       fgets(str, sizeof(str), src))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+		        {
 		    if (count == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        fprintf (fp, "    #####:%5u:%s",
 				 curline, str);
 		    else if (has_zero)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 		        fprintf (fp, "%8llu*:%5u:%s", 
 				 count, curline, str);
 		    else
@@ -409,13 +606,24 @@ void __store_test_coverage (unsigned char * p)
 	    }
 	}
 	while (fgets(str, sizeof(str), src))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	    fprintf (fp, "        -:%5u:%s", curline++, str);
 	fclose (src);
 next:
 	nfile = nfile->next;
     }
-    while (file) {
-        for (i = 0; i < file->n_func; i++) {
+    while (file)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
+        for (i = 0; i < file->n_func; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
 	    func = &file->func[i];
 	    free (func->line);
         }

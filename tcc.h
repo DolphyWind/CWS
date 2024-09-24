@@ -1974,9 +1974,13 @@ ST_FUNC void post_sem(TCCSem *p)
 #else
 ST_FUNC void wait_sem(TCCSem *p)
 {
+#ifdef C_WITH_SEMICOLONS
+    if (!p->init);
+#else
     if (!p->init)
+#endif
         sem_init(&p->sem, 0, 1), p->init = 1;
-    while (sem_wait(&p->sem) < 0 && errno == EINTR);
+    while (sem_wait(&p->sem) < 0 && errno == EINTR);{}
 }
 ST_FUNC void post_sem(TCCSem *p)
 {

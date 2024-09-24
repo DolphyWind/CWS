@@ -30,7 +30,11 @@ DLL_EXPORT int tcc_backtrace(const char *fmt, ...)
     va_list ap;
     int ret;
 
-    if (_tcc_backtrace) {
+    if (_tcc_backtrace)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         rt_frame f;
         f.fp = __builtin_frame_address(1);
         f.ip = __builtin_return_address(0);
@@ -40,8 +44,14 @@ DLL_EXPORT int tcc_backtrace(const char *fmt, ...)
     } else {
         const char *p, *nl = "\n";
         if (fmt[0] == '^' && (p = strchr(fmt + 1, fmt[0])))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             fmt = p + 1;
         if (fmt[0] == '\001')
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             ++fmt, nl = "";
         va_start(ap, fmt);
         ret = vfprintf(stderr, fmt, ap);

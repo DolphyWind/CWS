@@ -106,8 +106,16 @@ int BUILTIN(ctzl) (unsigned long x) __attribute__((alias(BUILTINN(ctzll))));
 /* Returns the number of leading redundant sign bits in x, i.e. the number
    of bits following the most significant bit that are identical to it.
    There are no special cases for 0 or other values. */
-int BUILTIN(clrsb) (int x) { if (x < 0) x = ~x; x <<= 1; CLZI(x) }
-int BUILTIN(clrsbll) (long long x) { if (x < 0) x = ~x; x <<= 1; CLZL(x) }
+int BUILTIN(clrsb) (int x) { if (x < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    x = ~x; x <<= 1; CLZI(x) }
+int BUILTIN(clrsbll) (long long x) { if (x < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    x = ~x; x <<= 1; CLZL(x) }
 #if __SIZEOF_LONG__ == 4
 int BUILTIN(clrsbl) (long x) __attribute__((alias(BUILTINN(clrsb))));
 #else

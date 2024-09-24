@@ -41,7 +41,11 @@
 #define BOUND_STATISTIC         (1)
 
 #if BOUND_DEBUG
- #define dprintf(a...)         if (print_calls) { bounds_loc(a); }
+#ifdef C_WITH_SEMICOLONS
+    #define dprintf(a...)         if (print_calls); { bounds_loc(a); }
+#else
+    #define dprintf(a...)         if (print_calls) { bounds_loc(a); }
+#endif
 #else
  #define dprintf(a...)
 #endif
@@ -142,9 +146,15 @@ static pthread_spinlock_t bounds_spin;
 /* about 25% faster then semaphore. */
 #define INIT_SEM()             pthread_spin_init (&bounds_spin, 0)
 #define EXIT_SEM()             pthread_spin_destroy (&bounds_spin)
+#ifdef C_WITH_SEMICOLONS
+#define WAIT_SEM()             if (use_sem); pthread_spin_lock (&bounds_spin)
+#define POST_SEM()             if (use_sem); pthread_spin_unlock (&bounds_spin)
+#define TRY_SEM()              if (use_sem); pthread_spin_trylock (&bounds_spin)
+#else
 #define WAIT_SEM()             if (use_sem) pthread_spin_lock (&bounds_spin)
 #define POST_SEM()             if (use_sem) pthread_spin_unlock (&bounds_spin)
 #define TRY_SEM()              if (use_sem) pthread_spin_trylock (&bounds_spin)
+#endif
 #endif
 #define HAVE_MEMALIGN          (1)
 #define MALLOC_REDIR           (1)
@@ -507,7 +517,7 @@ static void fetch_and_add(int* variable, int value)
 void __bounds_checking (int no_check)
 {
 #if HAVE_TLS_FUNC || HAVE_TLS_VAR
-    NO_CHECKING_SET(NO_CHECKING_GET() + no_check);
+    no_checking = no_checking + no_check;
 #else
     fetch_and_add (&no_checking, no_check);
 #endif
@@ -535,7 +545,10 @@ void * __bound_ptr_add(void *p, size_t offset)
 {
     size_t addr = (size_t)p;
 
-    if (NO_CHECKING_GET())
+    if (no_checking)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return p + offset;
 
     dprintf(stderr, "%s, %s(): %p 0x%lx\n",
@@ -543,29 +556,59 @@ void * __bound_ptr_add(void *p, size_t offset)
 
     WAIT_SEM ();
     INCR_COUNT(bound_ptr_add_count);
-    if (tree) {
+    if (tree)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         addr -= tree->start;
-        if (addr >= tree->size) {
+        if (addr >= tree->size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             addr = (size_t)p;
             tree = splay (addr, tree);
             addr -= tree->start;
         }
-        if (addr >= tree->size) {
+        if (addr >= tree->size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             addr = (size_t)p;
             tree = splay_end (addr, tree);
             addr -= tree->start;
         }
-        if (addr <= tree->size) {
-            if (tree->is_invalid || addr + offset > tree->size) {
+        if (addr <= tree->size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
+            if (tree->is_invalid || addr + offset > tree->size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 POST_SEM ();
                 if (print_warn_ptr_add)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     bound_warning("%p is outside of the region", p + offset);
                 if (never_fatal <= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     return INVALID_POINTER; /* return an invalid pointer */
                 return p + offset;
             }
         }
-        else if (p) { /* Allow NULL + offset. offsetoff is using it. */
+        else if (p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        { /* Allow NULL + offset. offsetoff is using it. */
             INCR_COUNT(bound_not_found);
             POST_SEM ();
             bound_not_found_warning (__FILE__, __FUNCTION__, p);
@@ -578,6 +621,51 @@ void * __bound_ptr_add(void *p, size_t offset)
 
 /* return '(p + offset)' for pointer indirection (the resulting must
    be strictly inside the region */
+#ifdef C_WITH_SEMICOLONS
+#define BOUND_PTR_INDIR(dsize)                                                 \
+void * __bound_ptr_indir ## dsize (void *p, size_t offset)                     \
+{                                                                              \
+    size_t addr = (size_t)p;                                                   \
+                                                                               \
+    if (no_checking);                                                     \
+        return p + offset;                                                     \
+                                                                               \
+    dprintf(stderr, "%s, %s(): %p 0x%lx\n",                                    \
+            __FILE__, __FUNCTION__, p, (unsigned long)offset);                 \
+    WAIT_SEM ();                                                               \
+    INCR_COUNT(bound_ptr_indir ## dsize ## _count);                            \
+    if (tree); {                                                                \
+        addr -= tree->start;                                                   \
+        if (addr >= tree->size); {                                              \
+            addr = (size_t)p;                                                  \
+            tree = splay (addr, tree);                                         \
+            addr -= tree->start;                                               \
+        }                                                                      \
+        if (addr >= tree->size); {                                              \
+            addr = (size_t)p;                                                  \
+            tree = splay_end (addr, tree);                                     \
+            addr -= tree->start;                                               \
+        }                                                                      \
+        if (addr <= tree->size); {                                              \
+            if (tree->is_invalid || addr + offset + dsize > tree->size); {      \
+                POST_SEM ();                                                   \
+                bound_warning("%p is outside of the region", p + offset); \
+                if (never_fatal <= 0);                                          \
+                    return INVALID_POINTER; /* return an invalid pointer */    \
+                return p + offset;                                             \
+            }                                                                  \
+        }                                                                      \
+        else {                                                                 \
+            INCR_COUNT(bound_not_found);                                       \
+            POST_SEM ();                                                       \
+            bound_not_found_warning (__FILE__, __FUNCTION__, p);               \
+            return p + offset;                                                 \
+        }                                                                      \
+    }                                                                          \
+    POST_SEM ();                                                               \
+    return p + offset;                                                         \
+}
+#else
 #define BOUND_PTR_INDIR(dsize)                                                 \
 void * __bound_ptr_indir ## dsize (void *p, size_t offset)                     \
 {                                                                              \
@@ -621,6 +709,7 @@ void * __bound_ptr_indir ## dsize (void *p, size_t offset)                     \
     POST_SEM ();                                                               \
     return p + offset;                                                         \
 }
+#endif
 
 BOUND_PTR_INDIR(1)
 BOUND_PTR_INDIR(2)
@@ -650,22 +739,37 @@ void FASTCALL __bound_local_new(void *p1)
 {
     size_t addr, fp, *p = p1;
 
-    if (NO_CHECKING_GET())
-         return;
+    if (no_checking)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        return;
     GET_CALLER_FP(fp);
     dprintf(stderr, "%s, %s(): p1=%p fp=%p\n",
             __FILE__, __FUNCTION__, p, (void *)fp);
     WAIT_SEM ();
-    while ((addr = p[0])) {
+    while ((addr = p[0]))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         INCR_COUNT(bound_local_new_count);
         tree = splay_insert(addr + fp, p[1], tree);
         p += 2;
     }
     POST_SEM ();
 #if BOUND_DEBUG
-    if (print_calls) {
+    if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         p = p1;
-        while ((addr = p[0])) {
+        while ((addr = p[0]))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             dprintf(stderr, "%s, %s(): %p 0x%lx\n",
                     __FILE__, __FUNCTION__,
                     (void *) (addr + fp), (unsigned long) p[1]);
@@ -680,24 +784,42 @@ void FASTCALL __bound_local_delete(void *p1)
 {
     size_t addr, fp, *p = p1;
 
-    if (NO_CHECKING_GET())
+    if (no_checking)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
          return;
     GET_CALLER_FP(fp);
     dprintf(stderr, "%s, %s(): p1=%p fp=%p\n",
             __FILE__, __FUNCTION__, p, (void *)fp);
     WAIT_SEM ();
-    while ((addr = p[0])) {
+    while ((addr = p[0]))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         INCR_COUNT(bound_local_delete_count);
         tree = splay_delete(addr + fp, tree);
         p += 2;
     }
-    if (alloca_list) {
+    if (alloca_list)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         alloca_list_type *last = NULL;
         alloca_list_type *cur = alloca_list;
 
         do {
-            if (cur->fp == fp) {
+            if (cur->fp == fp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 if (last)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     last->next = cur->next;
                 else
                     alloca_list = cur->next;
@@ -713,13 +835,24 @@ void FASTCALL __bound_local_delete(void *p1)
              }
         } while (cur);
     }
-    if (jmp_list) {
+    if (jmp_list)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         jmp_list_type *last = NULL;
         jmp_list_type *cur = jmp_list;
 
         do {
-            if (cur->fp == fp) {
+            if (cur->fp == fp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 if (last)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     last->next = cur->next;
                 else
                     jmp_list = cur->next;
@@ -737,10 +870,22 @@ void FASTCALL __bound_local_delete(void *p1)
 
     POST_SEM ();
 #if BOUND_DEBUG
-    if (print_calls) {
+    if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         p = p1;
-        while ((addr = p[0])) {
-            if (addr != 1) {
+        while ((addr = p[0]))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
+            if (addr != 1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 dprintf(stderr, "%s, %s(): %p 0x%lx\n",
                         __FILE__, __FUNCTION__,
                         (void *) (addr + fp), (unsigned long) p[1]);
@@ -759,7 +904,10 @@ void __bound_new_region(void *p, size_t size)
     alloca_list_type *cur;
     alloca_list_type *new;
 
-    if (NO_CHECKING_GET())
+    if (no_checking)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return;
 
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
@@ -770,7 +918,11 @@ void __bound_new_region(void *p, size_t size)
     INCR_COUNT(bound_alloca_count);
     last = NULL;
     cur = alloca_list;
-    while (cur) {
+    while (cur)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 #if defined(__i386__) || (defined(__arm__) && !defined(__ARM_EABI__))
         int align = 4;
 #elif defined(__arm__)
@@ -781,8 +933,15 @@ void __bound_new_region(void *p, size_t size)
         void *cure = (void *)((char *)cur->p + ((cur->size + align) & -align));
         void *pe = (void *)((char *)p + ((size + align) & -align));
         if (cur->fp == fp && ((cur->p <= p && cure > p) ||
-                              (p <= cur->p && pe > cur->p))) {
+                              (p <= cur->p && pe > cur->p)))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (last)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 last->next = cur->next;
             else
                 alloca_list = cur->next;
@@ -793,7 +952,11 @@ void __bound_new_region(void *p, size_t size)
         cur = cur->next;
     }
     tree = splay_insert((size_t)p, size, tree);
-    if (new) {
+    if (new)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         new->fp = fp;
         new->p = p;
         new->size = size;
@@ -801,7 +964,11 @@ void __bound_new_region(void *p, size_t size)
         alloca_list = new;
     }
     POST_SEM ();
-    if (cur) {
+    if (cur)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         dprintf(stderr, "%s, %s(): remove alloca/vla %p\n",
                 __FILE__, __FUNCTION__, cur->p);
         BOUND_FREE (cur);
@@ -813,25 +980,48 @@ void __bound_setjmp(jmp_buf env)
     jmp_list_type *jl;
     void *e = (void *) env;
 
-    if (NO_CHECKING_GET() == 0) {
+    if (no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         dprintf(stderr, "%s, %s(): %p\n", __FILE__, __FUNCTION__, e);
         WAIT_SEM ();
         INCR_COUNT(bound_setjmp_count);
         jl = jmp_list;
-        while (jl) {
+        while (jl)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (jl->penv == e)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 break;
             jl = jl->next;
         }
-        if (jl == NULL) {
+        if (jl == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             jl = BOUND_MALLOC (sizeof (jmp_list_type));
-            if (jl) {
+            if (jl)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 jl->penv = e;
                 jl->next = jmp_list;
                 jmp_list = jl;
             }
         }
-        if (jl) {
+        if (jl)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             size_t fp;
 
             GET_CALLER_FP (fp);
@@ -849,25 +1039,48 @@ static void __bound_long_jump(jmp_buf env, int val, int sig, const char *func)
     void *e;
     BOUND_TID_TYPE tid;
 
-    if (NO_CHECKING_GET() == 0) {
+    if (no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+{
         e = (void *)env;
         BOUND_GET_TID(tid);
         dprintf(stderr, "%s, %s(): %p\n", __FILE__, func, e);
         WAIT_SEM();
         INCR_COUNT(bound_longjmp_count);
         jl = jmp_list;
-        while (jl) {
-            if (jl->penv == e && jl->tid == tid) {
+        while (jl)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
+            if (jl->penv == e && jl->tid == tid)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
                 size_t start_fp = (size_t)__builtin_frame_address(0);
                 size_t end_fp = jl->end_fp;
                 jmp_list_type *cur = jmp_list;
                 jmp_list_type *last = NULL;
 
-                while (cur->penv != e || cur->tid != tid) {
-                    if (cur->tid == tid) {
+                while (cur->penv != e || cur->tid != tid)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
+                    if (cur->tid == tid)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                {
                         dprintf(stderr, "%s, %s(): remove setjmp %p\n",
                                 __FILE__, func, cur->penv);
                         if (last)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                             last->next = cur->next;
                         else
                             jmp_list = cur->next;
@@ -879,25 +1092,49 @@ static void __bound_long_jump(jmp_buf env, int val, int sig, const char *func)
                         cur = cur->next;
                     }
                 }
-                for (;;) {
+                for (;;)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                     Tree *t = tree;
                     alloca_list_type *last;
                     alloca_list_type *cur;
 
                     while (t && (t->start < start_fp || t->start > end_fp))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                         if (t->start < start_fp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                             t = t->right;
                         else
                             t = t->left;
                     if (t == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                         break;
                     last = NULL;
                     cur = alloca_list;
-                    while (cur) {
-                         if ((size_t) cur->p == t->start) {
+                    while (cur)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                {
+                         if ((size_t) cur->p == t->start)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    {
                              dprintf(stderr, "%s, %s(): remove alloca/vla %p\n",
                                      __FILE__, func, cur->p);
                              if (last)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                                  last->next = cur->next;
                              else
                                  alloca_list = cur->next;
@@ -944,7 +1181,11 @@ void __bound_init(size_t *p, int mode)
     dprintf(stderr, "%s, %s(): start %s\n", __FILE__, __FUNCTION__,
             mode < 0 ? "lazy" : mode == 0 ? "normal use" : "for -run");
 
-    if (inited) {
+    if (inited)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM();
         goto add_bounds;
     }
@@ -959,7 +1200,7 @@ void __bound_init(size_t *p, int mode)
     pthread_setspecific(no_checking_key, &no_checking);
 #endif
 #endif
-    NO_CHECKING_SET(1);
+    no_checking = 1;
 
     print_warn_ptr_add = getenv ("TCC_BOUNDS_WARN_POINTER_ADD") != NULL;
     print_calls = getenv ("TCC_BOUNDS_PRINT_CALLS") != NULL;
@@ -978,7 +1219,11 @@ void __bound_init(size_t *p, int mode)
            generated code segment isn't registered with dyld and hence the
            caller image of dlsym isn't known to it */
         *(void **) (&malloc_redir) = dlsym (addr, "malloc");
-        if (malloc_redir == NULL) {
+        if (malloc_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             dprintf(stderr, "%s, %s(): use RTLD_DEFAULT\n",
                     __FILE__, __FUNCTION__);
             addr = RTLD_DEFAULT;
@@ -997,12 +1242,18 @@ void __bound_init(size_t *p, int mode)
         dprintf(stderr, "%s, %s(): memalign_redir %p\n",
                 __FILE__, __FUNCTION__, memalign_redir);
         if (malloc_redir == NULL || free_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             bound_alloc_error ("Cannot redirect malloc/free");
 #if HAVE_PTHREAD_CREATE
         *(void **) (&pthread_create_redir) = dlsym (addr, "pthread_create");
         dprintf(stderr, "%s, %s(): pthread_create_redir %p\n",
                 __FILE__, __FUNCTION__, pthread_create_redir);
         if (pthread_create_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             bound_alloc_error ("Cannot redirect pthread_create");
 #endif
 #if HAVE_SIGNAL
@@ -1010,6 +1261,9 @@ void __bound_init(size_t *p, int mode)
         dprintf(stderr, "%s, %s(): signal_redir %p\n",
                 __FILE__, __FUNCTION__, signal_redir);
         if (signal_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             bound_alloc_error ("Cannot redirect signal");
 #endif
 #if HAVE_SIGACTION
@@ -1017,6 +1271,9 @@ void __bound_init(size_t *p, int mode)
         dprintf(stderr, "%s, %s(): sigaction_redir %p\n",
                 __FILE__, __FUNCTION__, sigaction_redir);
         if (sigaction_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             bound_alloc_error ("Cannot redirect sigaction");
 #endif
 #if HAVE_FORK
@@ -1024,6 +1281,9 @@ void __bound_init(size_t *p, int mode)
         dprintf(stderr, "%s, %s(): fork_redir %p\n",
                 __FILE__, __FUNCTION__, fork_redir);
         if (fork_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             bound_alloc_error ("Cannot redirect fork");
 #endif
     }
@@ -1041,10 +1301,17 @@ void __bound_init(size_t *p, int mode)
 
         /* Display exec name. Usefull when a lot of code is compiled with tcc */
         fp = fopen ("/proc/self/comm", "r");
-        if (fp) {
+        if (fp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             memset (exec, 0, sizeof(exec));
             fread (exec, 1, sizeof(exec) - 2, fp);
             if (strchr(exec,'\n'))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 *strchr(exec,'\n') = '\0';
             strcat (exec, ":");
             fclose (fp);
@@ -1052,19 +1319,38 @@ void __bound_init(size_t *p, int mode)
         /* check if dlopen is used (is threre a better way?) */ 
         found = 0;
         fp = fopen ("/proc/self/maps", "r");
-        if (fp) {
-            while (fgets (line, sizeof(line), fp)) {
+        if (fp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
+            while (fgets (line, sizeof(line), fp))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 if (sscanf (line, "%lx-%lx", &start, &end) == 2 &&
-                            ad >= start && ad < end) {
+                            ad >= start && ad < end)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                {
                     found = 1;
                     break;
                 }
                 if (strstr (line,"[heap]"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                     break;
             }
             fclose (fp);
         }
-        if (found == 0) {
+        if (found == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             use_sem = 1;
             no_strdup = 1;
         }
@@ -1099,13 +1385,24 @@ void __bound_init(size_t *p, int mode)
 
 add_bounds:
     if (!p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         goto no_bounds;
 
     /* add all static bound check values */
-    while (p[0] != 0) {
+    while (p[0] != 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         tree = splay_insert(p[0], p[1], tree);
 #if BOUND_DEBUG
-        if (print_calls) {
+        if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             dprintf(stderr, "%s, %s(): static var %p 0x%lx\n",
                     __FILE__, __FUNCTION__,
                     (void *) p[0], (unsigned long) p[1]);
@@ -1116,7 +1413,7 @@ add_bounds:
 no_bounds:
 
     POST_SEM ();
-    NO_CHECKING_SET(0);
+    no_checking = 0;
     dprintf(stderr, "%s, %s(): end\n\n", __FILE__, __FUNCTION__);
 }
 
@@ -1127,17 +1424,31 @@ __attribute__((constructor))
 __bound_main_arg(int argc, char **argv, char **envp)
 {
     __bound_init (0, -1);
-    if (argc && argv) {
+    if (argc && argv)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+{
         int i;
 
         WAIT_SEM ();
         for (i = 0; i < argc; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             tree = splay_insert((size_t) argv[i], strlen (argv[i]) + 1, tree);
         tree = splay_insert((size_t) argv, (argc + 1) * sizeof(char *), tree);
         POST_SEM ();
 #if BOUND_DEBUG
-        if (print_calls) {
+        if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
             for (i = 0; i < argc; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 dprintf(stderr, "%s, %s(): arg %p 0x%lx\n",
                         __FILE__, __FUNCTION__,
                         argv[i], (unsigned long)(strlen (argv[i]) + 1));
@@ -1148,20 +1459,36 @@ __bound_main_arg(int argc, char **argv, char **envp)
 #endif
     }
 
-    if (envp && *envp) {
+    if (envp && *envp)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+{
         char **p = envp;
 
         WAIT_SEM ();
-        while (*p) {
+        while (*p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
             tree = splay_insert((size_t) *p, strlen (*p) + 1, tree);
             ++p;
         }
         tree = splay_insert((size_t) envp, (++p - envp) * sizeof(char *), tree);
         POST_SEM ();
 #if BOUND_DEBUG
-        if (print_calls) {
+        if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
             p = envp;
-            while (*p) {
+            while (*p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
                 dprintf(stderr, "%s, %s(): env %p 0x%lx\n",
                         __FILE__, __FUNCTION__,
                         *p, (unsigned long)(strlen (*p) + 1));
@@ -1184,47 +1511,82 @@ void __attribute__((destructor)) __bound_exit(void)
 
     dprintf(stderr, "%s, %s():\n", __FILE__, __FUNCTION__);
 
-    if (inited) {
+    if (inited)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined TCC_MUSL && \
     !defined(__OpenBSD__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
     !defined(__ANDROID__)
-        if (print_heap) {
+        if (print_heap)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             extern void __libc_freeres (void);
             __libc_freeres ();
         }
 #endif
 
-        NO_CHECKING_SET(1);
+        no_checking = 1;
 
         TRY_SEM ();
-        while (alloca_list) {
+        while (alloca_list) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             alloca_list_type *next = alloca_list->next;
 
             tree = splay_delete ((size_t) alloca_list->p, tree);
             BOUND_FREE (alloca_list);
             alloca_list = next;
         }
-        while (jmp_list) {
+        while (jmp_list) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
            jmp_list_type *next  = jmp_list->next;
 
            BOUND_FREE (jmp_list);
            jmp_list = next;
         }
-        for (i = 0; i < FREE_REUSE_SIZE; i++) {
-            if (free_reuse_list[i]) {
+        for (i = 0; i < FREE_REUSE_SIZE; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
+            if (free_reuse_list[i])
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 tree = splay_delete ((size_t) free_reuse_list[i], tree);
                 BOUND_FREE (free_reuse_list[i]);
              }
         }
-        while (tree) {
+        while (tree)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (print_heap && tree->type != 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 fprintf (stderr, "%s, %s(): %s found size %lu\n",
                          __FILE__, __FUNCTION__, alloc_type[tree->type],
                          (unsigned long) tree->size);
             tree = splay_delete (tree->start, tree);
         }
 #if TREE_REUSE
-        while (tree_free_list) {
+        while (tree_free_list)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             Tree *next = tree_free_list->left;
             BOUND_FREE (tree_free_list);
             tree_free_list = next;
@@ -1240,7 +1602,11 @@ void __attribute__((destructor)) __bound_exit(void)
 #endif
 #endif
         inited = 0;
-        if (print_statistic) {
+        if (print_statistic)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
 #if BOUND_STATISTIC
             fprintf (stderr, "bound_ptr_add_count      %llu\n", bound_ptr_add_count);
             fprintf (stderr, "bound_ptr_indir1_count   %llu\n", bound_ptr_indir1_count);
@@ -1291,12 +1657,24 @@ void __bound_exit_dll(size_t *p)
 {
     dprintf(stderr, "%s, %s()\n", __FILE__, __FUNCTION__);
 
-    if (p) {
+    if (p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
-	while (p[0] != 0) {
+	while (p[0] != 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+	    {
 	    tree = splay_delete(p[0], tree);
 #if BOUND_DEBUG
-            if (print_calls) {
+            if (print_calls)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 dprintf(stderr, "%s, %s(): remove static var %p 0x%lx\n",
                         __FILE__, __FUNCTION__,
                         (void *) p[0], (unsigned long) p[1]);
@@ -1322,7 +1700,11 @@ static void *bound_thread_create(void *bdata)
 #if HAVE_TLS_FUNC
     int *p = (int *) BOUND_MALLOC(sizeof(int));
   
-    if (!p) bound_alloc_error("bound_thread_create malloc");
+    if (!p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        bound_alloc_error("bound_thread_create malloc");
     *p = 0;
     pthread_setspecific(no_checking_key, p);
 #endif
@@ -1349,7 +1731,11 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     sigfillset(&mask);
     pthread_sigmask(SIG_SETMASK, &mask, &old_mask);
     data = (bound_thread_create_type *) BOUND_MALLOC(sizeof(bound_thread_create_type));
-    if (!data) bound_alloc_error("bound_thread_create malloc");
+    if (!data)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        bound_alloc_error("bound_thread_create malloc");
     data->start_routine = start_routine;
     data->arg = arg;
     data->old_mask = old_mask;
@@ -1389,10 +1775,21 @@ bound_sig signal(int signum, bound_sig handler)
     dprintf (stderr, "%s, %s() %d %p\n", __FILE__, __FUNCTION__,
              signum, handler);
     retval = signal_redir(signum, handler ? signal_handler : handler);
-    if (retval != SIG_ERR) {
+    if (retval != SIG_ERR) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         if (bound_sig_used[signum])
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             retval = bound_sig_data[signum].signal_handler;
-        if (handler) {
+        if (handler)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             bound_sig_used[signum] = 1;
             bound_sig_data[signum].signal_handler = handler;
         }
@@ -1425,11 +1822,21 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
              signum, act, oldact);
 
     if (sigaction_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         __bound_init(0,-1);
 
-    if (act) {
+    if (act)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         nact = *act;
         if (nact.sa_flags & SA_SIGINFO)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             nact.sa_sigaction = sig_sigaction;
         else
             nact.sa_handler = sig_handler;
@@ -1437,19 +1844,41 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
     }
     else
         retval = sigaction_redir(signum, act, &oact);
-    if (retval >= 0) {
-        if (bound_sig_used[signum]) {
+    if (retval >= 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
+        if (bound_sig_used[signum])
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             if (oact.sa_flags & SA_SIGINFO)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 oact.sa_sigaction = bound_sig_data[signum].sig_sigaction;
             else
                 oact.sa_handler = bound_sig_data[signum].sig_handler;
         }
-        if (oldact) {
+        if (oldact)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             *oldact = oact;
         }
-        if (act) {
+        if (act)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             bound_sig_used[signum] = 1;
             if (act->sa_flags & SA_SIGINFO)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 bound_sig_data[signum].sig_sigaction = act->sa_sigaction;
             else
                 bound_sig_data[signum].sig_handler = act->sa_handler;
@@ -1467,6 +1896,9 @@ pid_t fork(void)
     WAIT_SEM();
     retval = (*fork_redir)();
     if (retval == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         INIT_SEM();
     else
         POST_SEM();
@@ -1484,12 +1916,23 @@ void *__bound_malloc(size_t size, const void *caller)
     
 #if MALLOC_REDIR
     /* This will catch the first dlsym call from __bound_init */
-    if (malloc_redir == NULL) {
+    if (malloc_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         __bound_init (0, -1);
-        if (malloc_redir == NULL) {
+        if (malloc_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             ptr = &initial_pool[pool_index];
             pool_index = (pool_index + size + 15) & ~15;
             if (pool_index >= sizeof (initial_pool))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 bound_alloc_error ("initial memory pool too small");
             dprintf (stderr, "%s, %s(): initial %p, 0x%lx\n",
                      __FILE__, __FUNCTION__, ptr, (unsigned long)size);
@@ -1503,14 +1946,25 @@ void *__bound_malloc(size_t size, const void *caller)
     ptr = BOUND_MALLOC (size + 1);
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, ptr, (unsigned long)size);
-    
-    if (inited && NO_CHECKING_GET() == 0) {
+
+    if (inited && no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_malloc_count);
 
-        if (ptr) {
+        if (ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             tree = splay_insert ((size_t) ptr, size ? size : size + 1, tree);
             if (tree && tree->start == (size_t) ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree->type = TCC_TYPE_MALLOC;
         }
         POST_SEM ();
@@ -1532,7 +1986,11 @@ void *__bound_memalign(size_t align, size_t size, const void *caller)
        be in fact not necessary */
     ptr = BOUND_MEMALIGN(align, size + 1);
 #else
-    if (align > 4) {
+    if (align > 4)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         /* XXX: handle it ? */
         ptr = NULL;
     } else {
@@ -1543,13 +2001,24 @@ void *__bound_memalign(size_t align, size_t size, const void *caller)
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, ptr, (unsigned long)size);
 
-    if (NO_CHECKING_GET() == 0) {
+    if (no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_memalign_count);
 
-        if (ptr) {
+        if (ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
             tree = splay_insert((size_t) ptr, size ? size : size + 1, tree);
             if (tree && tree->start == (size_t) ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree->type = TCC_TYPE_MEMALIGN;
         }
         POST_SEM ();
@@ -1572,18 +2041,53 @@ void __bound_free(void *ptr, const void *caller)
             (unsigned char *) ptr < &initial_pool[sizeof(initial_pool)])
 #endif
         )
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return;
 
     dprintf(stderr, "%s, %s(): %p\n", __FILE__, __FUNCTION__, ptr);
 
-    if (inited && NO_CHECKING_GET() == 0) {
+    if (inited && no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_free_count);
         tree = splay (addr, tree);
-        if (tree->start == addr) {
-            if (tree->is_invalid) {
+        if (tree->start == addr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
+            if (tree->is_invalid)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 POST_SEM ();
-                bound_error("freeing invalid region");
+                do {
+                    do {
+                        if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                            pthread_spin_lock(&bounds_spin);
+                        tcc_backtrace("^bcheck.c^BCHECK: "
+                                      "freeing invalid region");
+                        if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                            pthread_spin_unlock(&bounds_spin);
+                    } while (0);
+                    if (never_fatal == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                        exit(255);
+                } while (0);
                 return;
             }
             tree->is_invalid = 1;
@@ -1592,6 +2096,9 @@ void __bound_free(void *ptr, const void *caller)
             free_reuse_list[free_reuse_index] = ptr;
             free_reuse_index = (free_reuse_index + 1) % FREE_REUSE_SIZE;
             if (p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree = splay_delete((size_t)p, tree);
             ptr = p;
         }
@@ -1608,7 +2115,11 @@ void *__bound_realloc(void *ptr, size_t size, const void *caller)
 {
     void *new_ptr;
 
-    if (size == 0) {
+    if (size == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
 #if MALLOC_REDIR
         free(ptr);
 #else
@@ -1621,15 +2132,29 @@ void *__bound_realloc(void *ptr, size_t size, const void *caller)
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, new_ptr, (unsigned long)size);
 
-    if (NO_CHECKING_GET() == 0) {
+    if (no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_realloc_count);
 
         if (ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             tree = splay_delete ((size_t) ptr, tree);
-        if (new_ptr) {
+        if (new_ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             tree = splay_insert ((size_t) new_ptr, size ? size : size + 1, tree);
             if (tree && tree->start == (size_t) new_ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree->type = TCC_TYPE_REALLOC;
         }
         POST_SEM ();
@@ -1648,12 +2173,23 @@ void *__bound_calloc(size_t nmemb, size_t size)
     size *= nmemb;
 #if MALLOC_REDIR
     /* This will catch the first dlsym call from __bound_init */
-    if (malloc_redir == NULL) {
+    if (malloc_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         __bound_init (0, -1);
-        if (malloc_redir == NULL) {
+        if (malloc_redir == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             ptr = &initial_pool[pool_index];
             pool_index = (pool_index + size + 15) & ~15;
             if (pool_index >= sizeof (initial_pool))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 bound_alloc_error ("initial memory pool too small");
             dprintf (stderr, "%s, %s(): initial %p, 0x%lx\n",
                      __FILE__, __FUNCTION__, ptr, (unsigned long)size);
@@ -1666,13 +2202,24 @@ void *__bound_calloc(size_t nmemb, size_t size)
     dprintf (stderr, "%s, %s(): %p, 0x%lx\n",
              __FILE__, __FUNCTION__, ptr, (unsigned long)size);
 
-    if (ptr) {
+    if (ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         memset (ptr, 0, size);
-        if (NO_CHECKING_GET() == 0) {
+        if (no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             WAIT_SEM ();
             INCR_COUNT(bound_calloc_count);
             tree = splay_insert ((size_t) ptr, size ? size : size + 1, tree);
             if (tree && tree->start == (size_t) ptr)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree->type = TCC_TYPE_CALLOC;
             POST_SEM ();
         }
@@ -1689,7 +2236,11 @@ void *__bound_mmap (void *start, size_t size, int prot,
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, start, (unsigned long)size);
     result = mmap (start, size, prot, flags, fd, offset);
-    if (result && NO_CHECKING_GET() == 0) {
+    if (result && no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_mmap_count);
         tree = splay_insert((size_t)result, size, tree);
@@ -1704,7 +2255,11 @@ int __bound_munmap (void *start, size_t size)
 
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, start, (unsigned long)size);
-    if (start && NO_CHECKING_GET() == 0) {
+    if (start && no_checking == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         WAIT_SEM ();
         INCR_COUNT(bound_munmap_count);
         tree = splay_delete ((size_t) start, tree);
@@ -1720,9 +2275,33 @@ int __bound_munmap (void *start, size_t size)
 /* check that (p ... p + size - 1) lies inside 'p' region, if any */
 static void __bound_check(const void *p, size_t size, const char *function)
 {
-    if (size != 0 && __bound_ptr_add((void *)p, size) == INVALID_POINTER) {
-        bound_error("invalid pointer %p, size 0x%lx in %s",
-                p, (unsigned long)size, function);
+    if (size != 0 && __bound_ptr_add((void *)p, size) == INVALID_POINTER)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
+        do {
+            do {
+                if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    pthread_spin_lock(&bounds_spin);
+                tcc_backtrace("^bcheck.c^BCHECK: "
+                              "invalid pointer %p, size 0x%lx in %s",
+                    p, (unsigned long)size, function);
+                if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    pthread_spin_unlock(&bounds_spin);
+            } while (0);
+            if (never_fatal == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                exit(255);
+        } while (0);
     }
 }
 
@@ -1733,11 +2312,34 @@ static int check_overlap (const void *p1, size_t n1,
     const void *p1e = (const void *) ((const char *) p1 + n1);
     const void *p2e = (const void *) ((const char *) p2 + n2);
 
-    if (NO_CHECKING_GET() == 0 && n1 != 0 && n2 !=0 &&
-        ((p1 <= p2 && p1e > p2) ||     /* p1----p2====p1e----p2e */
-         (p2 <= p1 && p2e > p1))) {    /* p2----p1====p2e----p1e */
-        bound_error("overlapping regions %p(0x%lx), %p(0x%lx) in %s",
-                p1, (unsigned long)n1, p2, (unsigned long)n2, function);
+    if (no_checking == 0 && n1 != 0 && n2 != 0 && ((p1 <= p2 && p1e > p2) || /* p1----p2====p1e----p2e */
+            (p2 <= p1 && p2e > p1)))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {    /* p2----p1====p2e----p1e */
+        do {
+            do {
+                if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    pthread_spin_lock(&bounds_spin);
+                tcc_backtrace("^bcheck.c^BCHECK: "
+                              "overlapping regions %p(0x%lx), %p(0x%lx) in %s",
+                    p1, (unsigned long)n1, p2, (unsigned long)n2, function);
+                if (use_sem)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    pthread_spin_unlock(&bounds_spin);
+            } while (0);
+            if (never_fatal == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                exit(255);
+        } while (0);
         return never_fatal < 0;
     }
     return 0;
@@ -1751,6 +2353,9 @@ void *__bound_memcpy(void *dest, const void *src, size_t n)
     __bound_check(dest, n, "memcpy dest");
     __bound_check(src, n, "memcpy src");
     if (check_overlap(dest, n, src, n, "memcpy"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return dest;
     return memcpy(dest, src, n);
 }
@@ -1764,10 +2369,21 @@ int __bound_memcmp(const void *s1, const void *s2, size_t n)
     dprintf(stderr, "%s, %s(): %p, %p, 0x%lx\n",
             __FILE__, __FUNCTION__, s1, s2, (unsigned long)n);
     INCR_COUNT(bound_memcmp_count);
-    for (;;) {
+    for (;;)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         if ((ssize_t) --n == -1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
-        else if (*u1 != *u2) {
+        else if (*u1 != *u2)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             retval = *u1++ - *u2++;
             break;
         }
@@ -1876,6 +2492,9 @@ char *__bound_strcpy(char *dest, const char *src)
     __bound_check(dest, len, "strcpy dest");
     __bound_check(src, len, "strcpy src");
     if (check_overlap(dest, len, src, len, "strcpy"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return dest;
     return strcpy (dest, src);
 }
@@ -1889,10 +2508,16 @@ char *__bound_strncpy(char *dest, const char *src, size_t n)
             __FILE__, __FUNCTION__, dest, src, (unsigned long)n);
     INCR_COUNT(bound_strncpy_count);
     while (len-- && *p++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     len = p - src;
     __bound_check(dest, len, "strncpy dest");
     __bound_check(src, len, "strncpy src");
     if (check_overlap(dest, len, src, len, "strncpy"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return dest;
     return strncpy(dest, src, n);
 }
@@ -1905,7 +2530,11 @@ int __bound_strcmp(const char *s1, const char *s2)
     dprintf(stderr, "%s, %s(): %p, %p\n",
             __FILE__, __FUNCTION__, s1, s2);
     INCR_COUNT(bound_strcmp_count);
-    while (*u1 && *u1 == *u2) {
+    while (*u1 && *u1 == *u2)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         ++u1;
         ++u2;
     }
@@ -1925,8 +2554,15 @@ int __bound_strncmp(const char *s1, const char *s2, size_t n)
     INCR_COUNT(bound_strncmp_count);
     do {
         if ((ssize_t) --n == -1)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
-        else if (*u1 != *u2) {
+        else if (*u1 != *u2)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             retval = *u1++ - *u2++;
             break;
         }
@@ -1946,10 +2582,19 @@ char *__bound_strcat(char *dest, const char *src)
             __FILE__, __FUNCTION__, dest, src);
     INCR_COUNT(bound_strcat_count);
     while (*dest++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     while (*src++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     __bound_check(r, (dest - r) + (src - s) - 1, "strcat dest");
     __bound_check(s, src - s, "strcat src");
     if (check_overlap(r, (dest - r) + (src - s) - 1, s, src - s, "strcat"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return dest;
     return strcat(r, s);
 }
@@ -1964,10 +2609,19 @@ char *__bound_strncat(char *dest, const char *src, size_t n)
             __FILE__, __FUNCTION__, dest, src, (unsigned long)n);
     INCR_COUNT(bound_strncat_count);
     while (*dest++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     while (len-- && *src++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     __bound_check(r, (dest - r) + (src - s) - 1, "strncat dest");
     __bound_check(s, src - s, "strncat src");
     if (check_overlap(r, (dest - r) + (src - s) - 1, s, src - s, "strncat"))
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         return dest;
     return strncat(r, s, n);
 }
@@ -1980,8 +2634,15 @@ char *__bound_strchr(const char *s, int c)
     dprintf(stderr, "%s, %s(): %p, %d\n",
             __FILE__, __FUNCTION__, s, ch);
     INCR_COUNT(bound_strchr_count);
-    while (*str) {
+    while (*str)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         if (*str == ch)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
         ++str;
     }
@@ -1998,9 +2659,19 @@ char *__bound_strrchr(const char *s, int c)
             __FILE__, __FUNCTION__, s, ch);
     INCR_COUNT(bound_strrchr_count);
     while (*str++);
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
     __bound_check(s, (const char *)str - s, "strrchr");
-    while (str != (const unsigned char *)s) {
+    while (str != (const unsigned char *)s)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         if (*--str == ch)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
             break;
     }
     __bound_check(s, (const char *)str - s, "strrchr");
@@ -2018,11 +2689,22 @@ char *__bound_strdup(const char *s)
     new = BOUND_MALLOC ((p - s) + 1);
     dprintf(stderr, "%s, %s(): %p, 0x%lx\n",
             __FILE__, __FUNCTION__, new, (unsigned long)(p -s));
-    if (new) {
-        if (NO_CHECKING_GET() == 0 && no_strdup == 0) {
+    if (new)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
+        if (no_checking == 0 && no_strdup == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             WAIT_SEM ();
             tree = splay_insert((size_t)new, p - s, tree);
             if (tree && tree->start == (size_t) new)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
                 tree->type = TCC_TYPE_STRDUP;
             POST_SEM ();
         }
@@ -2092,32 +2774,72 @@ static Tree * splay (size_t addr, Tree *t)
     int comp;
     
     INCR_COUNT_SPLAY(bound_splay);
-    if (t == NULL) return t;
+    if (t == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        return t;
     N.left = N.right = NULL;
     l = r = &N;
  
-    for (;;) {
+    for (;;)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         comp = compare(addr, t->start, t->size);
-        if (comp < 0) {
+        if (comp < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             y = t->left;
-            if (y == NULL) break;
-            if (compare(addr, y->start, y->size) < 0) {
+            if (y == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                break;
+            if (compare(addr, y->start, y->size) < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 t->left = y->right;                    /* rotate right */
                 y->right = t;
                 t = y;
-                if (t->left == NULL) break;
+                if (t->left == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    break;
             }
             r->left = t;                               /* link right */
             r = t;
             t = t->left;
-        } else if (comp > 0) {
+        } else if (comp > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             y = t->right;
-            if (y == NULL) break;
-            if (compare(addr, y->start, y->size) > 0) {
+            if (y == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                break;
+            if (compare(addr, y->start, y->size) > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 t->right = y->left;                    /* rotate left */
                 y->left = t;
                 t = y;
-                if (t->right == NULL) break;
+                if (t->right == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    break;
             }
             l->right = t;                              /* link left */
             l = t;
@@ -2145,32 +2867,72 @@ static Tree * splay_end (size_t addr, Tree *t)
     int comp;
     
     INCR_COUNT_SPLAY(bound_splay_end);
-    if (t == NULL) return t;
+    if (t == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        return t;
     N.left = N.right = NULL;
     l = r = &N;
  
-    for (;;) {
+    for (;;)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         comp = compare_end(addr, t->start + t->size);
-        if (comp < 0) {
+        if (comp < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             y = t->left;
-            if (y == NULL) break;
-            if (compare_end(addr, y->start + y->size) < 0) {
+            if (y == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                break;
+            if (compare_end(addr, y->start + y->size) < 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 t->left = y->right;                    /* rotate right */
                 y->right = t;
                 t = y;
-                if (t->left == NULL) break;
+                if (t->left == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    break;
             }
             r->left = t;                               /* link right */
             r = t;
             t = t->left;
-        } else if (comp > 0) {
+        } else if (comp > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             y = t->right;
-            if (y == NULL) break;
-            if (compare_end(addr, y->start + y->size) > 0) {
+            if (y == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                break;
+            if (compare_end(addr, y->start + y->size) > 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+            {
                 t->right = y->left;                    /* rotate left */
                 y->left = t;
                 t = y;
-                if (t->right == NULL) break;
+                if (t->right == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+                    break;
             }
             l->right = t;                              /* link left */
             l = t;
@@ -2194,14 +2956,26 @@ static Tree * splay_insert(size_t addr, size_t size, Tree * t)
     Tree * new;
 
     INCR_COUNT_SPLAY(bound_splay_insert);
-    if (t != NULL) {
+    if (t != NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         t = splay(addr,t);
-        if (compare(addr, t->start, t->size)==0) {
+        if (compare(addr, t->start, t->size)==0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             return t;  /* it's already there */
         }
     }
 #if TREE_REUSE
-    if (tree_free_list) {
+    if (tree_free_list)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
           new = tree_free_list;
           tree_free_list = new->left;
     }
@@ -2210,13 +2984,25 @@ static Tree * splay_insert(size_t addr, size_t size, Tree * t)
     {
         new = (Tree *) BOUND_MALLOC (sizeof (Tree));
     }
-    if (new == NULL) {
+    if (new == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         bound_alloc_error("not enough memory for bound checking code");
     }
     else {
-        if (t == NULL) {
+        if (t == NULL) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             new->left = new->right = NULL;
-        } else if (compare(addr, t->start, t->size) < 0) {
+        } else if (compare(addr, t->start, t->size) < 0) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             new->left = t->left;
             new->right = t;
             t->left = NULL;
@@ -2243,10 +3029,22 @@ static Tree * splay_delete(size_t addr, Tree *t)
     Tree * x;
 
     INCR_COUNT_SPLAY(bound_splay_delete);
-    if (t==NULL) return NULL;
+    if (t==NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        return NULL;
     t = splay(addr,t);
-    if (compare_destroy(addr, t->start) == 0) {        /* found it */
-        if (t->left == NULL) {
+    if (compare_destroy(addr, t->start) == 0)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {        /* found it */
+        if (t->left == NULL) 
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        {
             x = t->right;
         } else {
             x = splay(addr, t->left);
@@ -2267,9 +3065,17 @@ static Tree * splay_delete(size_t addr, Tree *t)
 void splay_printtree(Tree * t, int d)
 {
     int i;
-    if (t == NULL) return;
+    if (t == NULL)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        return;
     splay_printtree(t->right, d+1);
-    for (i=0; i<d; i++) fprintf(stderr," ");
+    for (i=0; i<d; i++)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        fprintf(stderr," ");
     fprintf(stderr,"%p(0x%lx:%u:%u)\n",
             (void *) t->start, (unsigned long) t->size,
             (unsigned)t->type, (unsigned)t->is_invalid);

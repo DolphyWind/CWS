@@ -23,13 +23,20 @@ void __bt_init(rt_context *p, int is_exe)
     /* call __bound_init here due to redirection of sigaction */
     /* needed to add global symbols */
     if (p->bounds_start)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
 	__bound_init(p->bounds_start, -1);
 
     /* add to chain */
     rt_wait_sem();
     p->next = g_rc, g_rc = p;
     rt_post_sem();
-    if (is_exe) {
+    if (is_exe)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
         /* we are the executable (not a dll) */
         p->top_func = main;
         set_exception_handler();
@@ -45,12 +52,23 @@ void __bt_exit(rt_context *p)
     //fprintf(stderr, "__bt_exit %d %p\n", !!p->top_func, p);
 
     if (p->bounds_start)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+
 	__bound_exit_dll(p->bounds_start);
 
     /* remove from chain */
     rt_wait_sem();
     for (pp = &g_rc; rc = *pp, rc; pp = &rc->next)
-        if (rc == p) {
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+        if (rc == p)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
+    {
             *pp = rc->next;
             break;
         }
@@ -62,6 +80,9 @@ ST_FUNC char *pstrcpy(char *buf, size_t buf_size, const char *s)
 {
     int l = strlen(s);
     if (l >= buf_size)
+#ifdef C_WITH_SEMICOLONS
+;
+#endif
         l = buf_size - 1;
     memcpy(buf, s, l);
     buf[l] = 0;

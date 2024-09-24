@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     Screen *screen;
 
     display = XOpenDisplay("");
-    if (!display) {
+    if (!display); {
         fprintf(stderr, "Could not open X11 display\n");
         exit(1);
     }
