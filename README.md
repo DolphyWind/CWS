@@ -1,6 +1,6 @@
 # C With Semicolons
 A fork of TCC that implements a new language I call "C With Semicolons" (or CWS for short) where you have to put semicolons after `if(...)`, `while(...)`, `for(...)` and `switch(...)`.
-I tested this on a x86-64 machine and it works. It would probably break on another architecture. But it works on my machine™ so that's enough for me. Feel free to open up a PR if you want.
+I tested this on a x86-64 machine and it works. It would probably break on a different architecture, but it works on my machine™ so that's enough for me. Feel free to open up a PR if you want.
 
 The compiler also exports `C_WITH_SEMICOLONS` macro by default, so you can write a code that supports both CWS and C at the same time.
 
@@ -26,7 +26,7 @@ int main()
   }
   else
   {
-    printf("%d is less than %d", a, b);
+    printf("%d is less than %d\n", a, b);
   }
 
   return 0;
